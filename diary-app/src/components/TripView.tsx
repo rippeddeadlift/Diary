@@ -2,6 +2,7 @@ import { GpxMap } from './maps/GpxMap'
 import { Notes } from './content/Notes'
 import type { Trip } from '../data/trips'
 import { Button } from './ui/button';
+import { formatDateEU } from '@/data/counterCsv';
 
 export function TripView({ trip, onBack }: { trip: Trip; onBack: () => void }) {
   return (
@@ -11,7 +12,7 @@ export function TripView({ trip, onBack }: { trip: Trip; onBack: () => void }) {
           ← zurück
         </Button>
         <h2 style={{ margin: 0 }}>{trip.meta.title}</h2>
-        <span style={{ opacity: 0.7 }}>{trip.meta.date}</span>
+        <span style={{ opacity: 0.7 }}>{formatDateEU(trip.meta.date)}</span>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>

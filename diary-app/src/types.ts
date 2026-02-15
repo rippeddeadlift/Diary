@@ -6,7 +6,7 @@ export type TripIndex = {
 export type TripMeta = {
   id: string
   title: string
-  date: string // YYYY-MM-DD
+  date: string 
   tags?: string[]
   distanceKm?: number
   gpx?: string // filename (relative to trip folder)
