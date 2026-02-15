@@ -1,24 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
 import { loadTrips, type Trip } from './data/trips'
-import { TripList } from './components/TripList'
-import { TripView } from './components/TripView'
 import { ThemeToggle } from './components/ThemeToggle'
 import { Button } from '@/components/ui/button'
 import { HomePage } from '@/pages/HomePage'
 import { PhotosPage } from '@/pages/PhotosPage'
 import { MenuPage } from '@/pages/MenuPage'
 import { FitnessPage } from '@/pages/FitnessPage'
+import { ToursPage } from '@/pages/ToursPage'
 
-type Page = 'menu' | 'home' |  'photos' | 'tours'  | 'fitness'
-
-type View = { kind: 'list' } | { kind: 'trip'; trip: Trip }
+type Page = 'menu' | 'home' | 'photos' | 'tours' | 'fitness'
 
 export default function App() {
   const [trips, setTrips] = useState<Trip[]>([])
   const [error, setError] = useState<string | null>(null)
 
   const [page, setPage] = useState<Page>('menu')
-  const [view, setView] = useState<View>({ kind: 'list' })
 
   useEffect(() => {
     ;(async () => {
@@ -39,28 +35,17 @@ export default function App() {
     return 'Fitness'
   }, [page])
 
-  function openTrip(trip: Trip) {
-    setPage('tours')
-    setView({ kind: 'trip', trip })
-  }
-
   function goMenu() {
     setPage('menu')
-    setView({ kind: 'list' })
   }
   function goPhotos() {
     setPage('photos')
-    setView({ kind: 'list' })
   }
-
   function goTours() {
     setPage('tours')
-    setView({ kind: 'list' })
   }
-
   function goFitness() {
     setPage('fitness')
-    setView({ kind: 'list' })
   }
 
   if (error) {
@@ -99,15 +84,13 @@ export default function App() {
         {page === 'menu' ? (
           <MenuPage onTours={goTours} onPhotos={goPhotos} onFitness={goFitness} />
         ) : page === 'home' ? (
-          <HomePage trips={trips} onOpenTrip={openTrip} />
+          <HomePage trips={trips} onOpenTrip={() => setPage('tours')} />
         ) : page === 'photos' ? (
           <PhotosPage />
         ) : page === 'fitness' ? (
           <FitnessPage />
-        ) : view.kind === 'list' ? (
-          <TripList trips={trips} onOpen={openTrip} />
         ) : (
-          <TripView trip={view.trip} onBack={goTours} />
+          <ToursPage trips={trips} />
         )}
       </div>
     </div>
