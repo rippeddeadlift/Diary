@@ -20,11 +20,11 @@ export function MenuPage({
 
 function MenuCard({ title, desc, onClick }: { title: string; desc: string; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="text-left">
+    <button onClick={onClick} className="text-center">
       <Card className="transition hover:shadow-md">
-        <CardHeader>
-          <CardTitle className="text-2xl tracking-wide">{title}</CardTitle>
-          <CardDescription className="text-base">{desc}</CardDescription>
+        <CardHeader className="py-10">
+          <CardTitle className="text-3xl tracking-wide">{title}</CardTitle>
+          <CardDescription className="mx-auto mt-2 max-w-[28ch] text-base">{desc}</CardDescription>
         </CardHeader>
       </Card>
     </button>
