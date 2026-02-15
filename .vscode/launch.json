@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Diary: Debug (Chrome)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5173/",
+      "webRoot": "${workspaceFolder}/diary-app/src",
+      "preLaunchTask": "Diary: dev",
+      "sourceMaps": true
+    }
+  ]
+}
