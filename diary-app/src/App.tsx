@@ -6,8 +6,10 @@ import { ThemeToggle } from './components/ThemeToggle'
 import { Button } from '@/components/ui/button'
 import { HomePage } from '@/pages/HomePage'
 import { PhotosPage } from '@/pages/PhotosPage'
+import { MenuPage } from '@/pages/MenuPage'
+import { FitnessPage } from '@/pages/FitnessPage'
 
-type Page = 'home' | 'tours' | 'photos'
+type Page = 'menu' | 'home' | 'tours' | 'photos' | 'fitness'
 
 type View = { kind: 'list' } | { kind: 'trip'; trip: Trip }
 
@@ -15,7 +17,7 @@ export default function App() {
   const [trips, setTrips] = useState<Trip[]>([])
   const [error, setError] = useState<string | null>(null)
 
-  const [page, setPage] = useState<Page>('home')
+  const [page, setPage] = useState<Page>('menu')
   const [view, setView] = useState<View>({ kind: 'list' })
 
   useEffect(() => {
@@ -30,9 +32,11 @@ export default function App() {
   }, [])
 
   const subtitle = useMemo(() => {
+    if (page === 'menu') return 'Menü'
     if (page === 'home') return 'Start'
     if (page === 'tours') return 'Touren'
-    return 'Fotos'
+    if (page === 'photos') return 'Fotos'
+    return 'Fitness'
   }, [page])
 
   function openTrip(trip: Trip) {
@@ -40,8 +44,8 @@ export default function App() {
     setView({ kind: 'trip', trip })
   }
 
-  function goHome() {
-    setPage('home')
+  function goMenu() {
+    setPage('menu')
     setView({ kind: 'list' })
   }
 
@@ -52,6 +56,11 @@ export default function App() {
 
   function goPhotos() {
     setPage('photos')
+    setView({ kind: 'list' })
+  }
+
+  function goFitness() {
+    setPage('fitness')
     setView({ kind: 'list' })
   }
 
@@ -81,23 +90,21 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant={page === 'home' ? 'default' : 'outline'} size="sm" onClick={goHome}>
+            <Button variant="outline" size="sm" onClick={goMenu}>
               Home
-            </Button>
-            <Button variant={page === 'tours' ? 'default' : 'outline'} size="sm" onClick={goTours}>
-              Touren
-            </Button>
-            <Button variant={page === 'photos' ? 'default' : 'outline'} size="sm" onClick={goPhotos}>
-              Fotos
             </Button>
             <ThemeToggle />
           </div>
         </header>
 
-        {page === 'home' ? (
+        {page === 'menu' ? (
+          <MenuPage onTours={goTours} onPhotos={goPhotos} onFitness={goFitness} />
+        ) : page === 'home' ? (
           <HomePage trips={trips} onOpenTrip={openTrip} />
         ) : page === 'photos' ? (
           <PhotosPage />
+        ) : page === 'fitness' ? (
+          <FitnessPage />
         ) : view.kind === 'list' ? (
           <TripList trips={trips} onOpen={openTrip} />
         ) : (
