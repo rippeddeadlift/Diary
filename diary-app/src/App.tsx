@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { loadTrips, type Trip } from './data/trips'
 import { TripList } from './components/TripList'
 import { TripView } from './components/TripView'
+import { ThemeToggle } from './components/ThemeToggle'
 
 type View = { kind: 'list' } | { kind: 'trip'; trip: Trip }
 
@@ -40,9 +41,12 @@ export default function App() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-5xl p-6">
-        <header className="mb-4 flex items-baseline gap-3">
-          <h1 className="text-xl font-semibold">Tagebuch</h1>
-          <span className="text-sm text-muted-foreground">Lokale Touren-Übersicht</span>
+        <header className="mb-4 flex items-center justify-between gap-3">
+          <div className="flex items-baseline gap-3">
+            <h1 className="text-xl font-semibold">Tagebuch</h1>
+            <span className="text-sm text-muted-foreground">Lokale Touren-Übersicht</span>
+          </div>
+          <ThemeToggle />
         </header>
 
         {view.kind === 'list' ? (
