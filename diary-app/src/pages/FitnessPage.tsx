@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CounterTracker } from '@/components/fitness/CounterTracker'
-import { getTodayISO, loadCounterCsv, type CounterRow } from '@/data/counterCsv'
+import { formatDateEU, getTodayISO, loadCounterCsv, type CounterRow } from '@/data/counterCsv'
 
 type FitnessView = 'dashboard' | 'dips' | 'pullups'
 
@@ -81,6 +81,7 @@ function FitnessDashboard({ onOpenDips, onOpenPullups }: { onOpenDips: () => voi
 
   return (
     <div className="space-y-4">
+      
       {err ? <div className="text-sm text-destructive">{err}</div> : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -90,9 +91,9 @@ function FitnessDashboard({ onOpenDips, onOpenPullups }: { onOpenDips: () => voi
 
       <Card className="border-0 shadow-sm">
         <CardHeader>
-          <CardTitle className="text-base">Heute</CardTitle>
+          <CardTitle className="text-base">Datum</CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">{today}</CardContent>
+        <CardContent className="text-sm text-muted-foreground">{formatDateEU(today)}</CardContent>
       </Card>
     </div>
   )

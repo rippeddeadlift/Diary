@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { getTodayISO, loadCounterCsv, type CounterRow } from '@/data/counterCsv'
+import { formatDateEU, getTodayISO, loadCounterCsv, type CounterRow } from '@/data/counterCsv'
 
 export function CounterTracker({ title, csvPath }: { title: string; csvPath: string }) {
   const [rows, setRows] = useState<CounterRow[]>([])
@@ -47,7 +47,7 @@ export function CounterTracker({ title, csvPath }: { title: string; csvPath: str
           <CardTitle>{title}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          <div className="text-sm text-muted-foreground">Heute ({today})</div>
+          <div className="text-sm text-muted-foreground">Heute ({formatDateEU(today)})</div>
           <div className="text-4xl font-semibold">{todayCount}</div>
         </CardContent>
       </Card>
@@ -63,7 +63,7 @@ export function CounterTracker({ title, csvPath }: { title: string; csvPath: str
             <div className="divide-y rounded-lg border">
               {rows.map((r) => (
                 <div key={r.date} className="flex items-center justify-between p-3">
-                  <div className="font-mono text-sm">{r.date}</div>
+                  <div className="font-mono text-sm">{formatDateEU(r.date)}</div>
                   <div className="text-sm font-semibold">{r.count}</div>
                 </div>
               ))}
