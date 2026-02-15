@@ -18,6 +18,12 @@ body {
   min-height: 100vh;
 }
 
+/* Leaflet + Tailwind fix: prevent tile image scaling gaps */
+.leaflet-container img {
+  max-width: none !important;
+  height: auto;
+}
+
 
 
 @layer base {
