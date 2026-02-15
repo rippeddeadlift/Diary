@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export function LeafletMap({ gpxText }: { gpxText: string }) {
   // lazy import leaflet only in browser
@@ -54,9 +55,13 @@ export function LeafletMap({ gpxText }: { gpxText: string }) {
   }, [ready, L, gpxText])
 
   return (
-    <div style={{ border: '1px solid rgba(0,0,0,0.12)', borderRadius: 12, overflow: 'hidden', background: 'white' }}>
-      <div style={{ padding: 10, fontWeight: 700 }}>Route (GPX)</div>
-      <div ref={mapRef} style={{ height: 420, width: '100%' }} />
-    </div>
+    <Card className="overflow-hidden">
+      <CardHeader className="py-2">
+        <CardTitle className="text-base">Route (GPX)</CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div ref={mapRef} className="h-[420px] w-full" />
+      </CardContent>
+    </Card>
   )
 }

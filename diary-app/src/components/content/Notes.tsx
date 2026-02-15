@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Trip } from '../../data/trips'
 import { loadTripNotes } from '../../data/trips'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export function Notes({ trip }: { trip: Trip }) {
   const [text, setText] = useState<string>('')
@@ -17,14 +18,17 @@ export function Notes({ trip }: { trip: Trip }) {
     })()
   }, [trip])
 
-  if (err) return <div style={{ color: 'crimson' }}>{err}</div>
+  if (err) return <div className="text-sm text-destructive">{err}</div>
   if (!text) return null
 
   return (
-  <div style={{ border: '1px solid rgba(0,0,0,0.12)', borderRadius: 12, padding: 14, background: 'black', color: 'white' }}>
-    <div style={{ fontWeight: 700, marginBottom: 8 }}>Notizen</div>
-    <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{text}</pre>
-  </div>
-)
-
+    <Card>
+      <CardHeader className="py-2">
+        <CardTitle className="text-base">Notizen</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <pre className="m-0 whitespace-pre-wrap">{text}</pre>
+      </CardContent>
+    </Card>
+  )
 }
