@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export function LeafletMap({ gpxText }: { gpxText: string }) {
   // lazy import leaflet only in browser
   const [ready, setReady] = useState(false)
   const [L, setL] = useState<any>(null)
+  const mapRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     import('leaflet').then((mod) => {
@@ -14,14 +15,10 @@ export function LeafletMap({ gpxText }: { gpxText: string }) {
 
   useEffect(() => {
     if (!ready || !L) return
-
-    const el = document.getElementById('map')
+    const el = mapRef.current
     if (!el) return
 
-    // cleanup existing map instance if hot reloaded
-    ;(el as any)._leaflet_id && ((el as any)._leaflet_id = null)
-
-    const map = L.map('map', { zoomControl: true })
+    const map = L.map(el, { zoomControl: true })
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
@@ -39,15 +36,17 @@ export function LeafletMap({ gpxText }: { gpxText: string }) {
     const line = L.polyline(pts, { color: '#7c3aed', weight: 5, opacity: 0.9 }).addTo(map)
     map.fitBounds(line.getBounds().pad(0.2))
 
-    // Sometimes Leaflet initializes before the layout is fully settled (esp. after page switches),
-    // which can leave blank strips. Force a size recalculation.
-    setTimeout(() => {
+    // Force size recalculation after layout settles (helps with blank strips)
+    requestAnimationFrame(() => {
       try {
         map.invalidateSize()
-      } catch {
-        // ignore
-      }
-    }, 0)
+      } catch {}
+      requestAnimationFrame(() => {
+        try {
+          map.invalidateSize()
+        } catch {}
+      })
+    })
 
     return () => {
       map.remove()
@@ -57,7 +56,7 @@ export function LeafletMap({ gpxText }: { gpxText: string }) {
   return (
     <div style={{ border: '1px solid rgba(0,0,0,0.12)', borderRadius: 12, overflow: 'hidden', background: 'white' }}>
       <div style={{ padding: 10, fontWeight: 700 }}>Route (GPX)</div>
-      <div id="map" style={{ height: 420, width: '100%' }} />
+      <div ref={mapRef} style={{ height: 420, width: '100%' }} />
     </div>
   )
 }
