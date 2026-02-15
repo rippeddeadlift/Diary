@@ -10,6 +10,7 @@ export type TripMeta = {
   type?: 'bike' | 'hike' | 'other'
   source?: string
   tags?: string[]
+  distanceKm?: number
   gpx?: string // filename (relative to trip folder)
   notes?: string // filename (relative to trip folder)
 }
