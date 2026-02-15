@@ -1,31 +1,69 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { loadDips, type DipsRow, getTodayISO } from '@/data/fitness'
+import { CounterTracker } from '@/components/fitness/CounterTracker'
+import { getTodayISO, loadCounterCsv, type CounterRow } from '@/data/counterCsv'
+
+type FitnessView = 'dashboard' | 'dips' | 'pullups'
+
+const DIPS_PATH = '/fitness/dips.csv'
+const PULLUPS_PATH = '/fitness/pullups.csv'
 
 export function FitnessPage() {
-  const [rows, setRows] = useState<DipsRow[]>([])
+  const [view, setView] = useState<FitnessView>('dashboard')
+
+  if (view === 'dips') {
+    return (
+      <div className="space-y-4">
+        <Button variant="outline" size="sm" onClick={() => setView('dashboard')}>
+          ← zurück
+        </Button>
+        <CounterTracker title="Dips" csvPath={DIPS_PATH} />
+      </div>
+    )
+  }
+
+  if (view === 'pullups') {
+    return (
+      <div className="space-y-4">
+        <Button variant="outline" size="sm" onClick={() => setView('dashboard')}>
+          ← zurück
+        </Button>
+        <CounterTracker title="Pull-ups" csvPath={PULLUPS_PATH} />
+      </div>
+    )
+  }
+
+  return <FitnessDashboard onOpenDips={() => setView('dips')} onOpenPullups={() => setView('pullups')} />
+}
+
+function FitnessDashboard({ onOpenDips, onOpenPullups }: { onOpenDips: () => void; onOpenPullups: () => void }) {
+  const today = getTodayISO()
+
+  const [dipsRows, setDipsRows] = useState<CounterRow[] | null>(null)
+  const [pullupsRows, setPullupsRows] = useState<CounterRow[] | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
-  useEffect(() => {
+  // lightweight polling on the dashboard too
+  useMemo(() => {
     let cancelled = false
 
     const refresh = async () => {
       try {
         setErr(null)
-        const next = await loadDips()
-        if (!cancelled) setRows(next)
+        const [dips, pullups] = await Promise.all([loadCounterCsv(DIPS_PATH), loadCounterCsv(PULLUPS_PATH)])
+        if (!cancelled) {
+          setDipsRows(dips)
+          setPullupsRows(pullups)
+        }
       } catch (e: any) {
         if (!cancelled) setErr(e?.message ?? String(e))
       }
     }
 
-    // initial load
     refresh()
-
-    // periodic refresh (simple polling)
     const id = window.setInterval(refresh, 5000)
 
-    // refresh when tab becomes visible again
     const onVis = () => {
       if (document.visibilityState === 'visible') refresh()
     }
@@ -38,42 +76,40 @@ export function FitnessPage() {
     }
   }, [])
 
-  const today = getTodayISO()
-  const todayCount = useMemo(() => rows.find((r) => r.date === today)?.count ?? 0, [rows, today])
+  const dipsToday = useMemo(() => dipsRows?.find((r) => r.date === today)?.count ?? 0, [dipsRows, today])
+  const pullupsToday = useMemo(() => pullupsRows?.find((r) => r.date === today)?.count ?? 0, [pullupsRows, today])
 
   return (
     <div className="space-y-4">
       {err ? <div className="text-sm text-destructive">{err}</div> : null}
 
-      <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle>Fitness</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <div className="text-sm text-muted-foreground">Dips heute ({today})</div>
-          <div className="text-4xl font-semibold">{todayCount}</div>
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FitnessTile title="Dips" today={dipsToday} onClick={onOpenDips} />
+        <FitnessTile title="Pull-ups" today={pullupsToday} onClick={onOpenPullups} />
+      </div>
 
       <Card className="border-0 shadow-sm">
         <CardHeader>
-          <CardTitle>Verlauf</CardTitle>
+          <CardTitle className="text-base">Heute</CardTitle>
         </CardHeader>
-        <CardContent>
-          {rows.length === 0 ? (
-            <div className="text-sm text-muted-foreground">Noch keine Einträge.</div>
-          ) : (
-            <div className="divide-y rounded-lg border">
-              {rows.map((r) => (
-                <div key={r.date} className="flex items-center justify-between p-3">
-                  <div className="font-mono text-sm">{r.date}</div>
-                  <div className="text-sm font-semibold">{r.count}</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
+        <CardContent className="text-sm text-muted-foreground">{today}</CardContent>
       </Card>
     </div>
+  )
+}
+
+function FitnessTile({ title, today, onClick }: { title: string; today: number; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="text-left">
+      <Card className="border-0 shadow-sm transition hover:shadow-md">
+        <CardHeader>
+          <CardTitle className="text-lg">{title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-sm text-muted-foreground">Heute</div>
+          <div className="text-4xl font-semibold">{today}</div>
+        </CardContent>
+      </Card>
+    </button>
   )
 }
