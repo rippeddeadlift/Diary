@@ -11,8 +11,8 @@ export function MenuPage({
 }) {
   return (
     <div className="grid gap-4">
-      <MenuCard title="TOUREN" desc="" onClick={onTours} />
       <MenuCard title="FOTOS" desc="" onClick={onPhotos} />
+      <MenuCard title="TOUREN" desc="" onClick={onTours} />
       <MenuCard title="FITNESS" desc="" onClick={onFitness} />
     </div>
   )

@@ -9,7 +9,7 @@ import { PhotosPage } from '@/pages/PhotosPage'
 import { MenuPage } from '@/pages/MenuPage'
 import { FitnessPage } from '@/pages/FitnessPage'
 
-type Page = 'menu' | 'home' | 'tours' | 'photos' | 'fitness'
+type Page = 'menu' | 'home' |  'photos' | 'tours'  | 'fitness'
 
 type View = { kind: 'list' } | { kind: 'trip'; trip: Trip }
 
@@ -34,8 +34,8 @@ export default function App() {
   const subtitle = useMemo(() => {
     if (page === 'menu') return 'Menü'
     if (page === 'home') return 'Start'
-    if (page === 'tours') return 'Touren'
     if (page === 'photos') return 'Fotos'
+    if (page === 'tours') return 'Touren'
     return 'Fitness'
   }, [page])
 
@@ -48,14 +48,13 @@ export default function App() {
     setPage('menu')
     setView({ kind: 'list' })
   }
-
-  function goTours() {
-    setPage('tours')
+  function goPhotos() {
+    setPage('photos')
     setView({ kind: 'list' })
   }
 
-  function goPhotos() {
-    setPage('photos')
+  function goTours() {
+    setPage('tours')
     setView({ kind: 'list' })
   }
 
