@@ -9,40 +9,48 @@ export default defineConfig({
     react(),
 
     // Dev-only: serve ../trips/* at /trips/*
+    // and ../fitness/* at /fitness/*
     {
-      name: 'serve-trips-from-parent',
+      name: 'serve-data-from-parent',
       configureServer(server) {
         const tripsRoot = resolve(__dirname, '..', 'trips')
+        const fitnessRoot = resolve(__dirname, '..', 'fitness')
 
-        server.middlewares.use('/trips', (req, res, next) => {
-          try {
-            const url = (req.url ?? '/').split('?')[0]
-            const rel = url.replace(/^\//, '')
-            const filePath = join(tripsRoot, rel)
+        function serveDir(mount: string, rootDir: string) {
+          server.middlewares.use(mount, (req, res, next) => {
+            try {
+              const url = (req.url ?? '/').split('?')[0]
+              const rel = url.replace(/^\//, '')
+              const filePath = join(rootDir, rel)
 
-            // Prevent path traversal
-            if (!filePath.startsWith(tripsRoot)) {
-              res.statusCode = 403
-              res.end('Forbidden')
-              return
+              // Prevent path traversal
+              if (!filePath.startsWith(rootDir)) {
+                res.statusCode = 403
+                res.end('Forbidden')
+                return
+              }
+
+              if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+                res.statusCode = 404
+                res.end('Not found')
+                return
+              }
+
+              // Minimal content-type handling
+              if (filePath.endsWith('.json')) res.setHeader('content-type', 'application/json; charset=utf-8')
+              else if (filePath.endsWith('.md')) res.setHeader('content-type', 'text/markdown; charset=utf-8')
+              else if (filePath.endsWith('.csv')) res.setHeader('content-type', 'text/csv; charset=utf-8')
+              else if (filePath.endsWith('.gpx') || filePath.endsWith('.xml')) res.setHeader('content-type', 'application/xml; charset=utf-8')
+
+              fs.createReadStream(filePath).pipe(res)
+            } catch (e) {
+              next(e)
             }
+          })
+        }
 
-            if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
-              res.statusCode = 404
-              res.end('Not found')
-              return
-            }
-
-            // Minimal content-type handling
-            if (filePath.endsWith('.json')) res.setHeader('content-type', 'application/json; charset=utf-8')
-            else if (filePath.endsWith('.md')) res.setHeader('content-type', 'text/markdown; charset=utf-8')
-            else if (filePath.endsWith('.gpx') || filePath.endsWith('.xml')) res.setHeader('content-type', 'application/xml; charset=utf-8')
-
-            fs.createReadStream(filePath).pipe(res)
-          } catch (e) {
-            next(e)
-          }
-        })
+        serveDir('/trips', tripsRoot)
+        serveDir('/fitness', fitnessRoot)
       }
     }
   ],
