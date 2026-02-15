@@ -39,6 +39,16 @@ export function LeafletMap({ gpxText }: { gpxText: string }) {
     const line = L.polyline(pts, { color: '#7c3aed', weight: 5, opacity: 0.9 }).addTo(map)
     map.fitBounds(line.getBounds().pad(0.2))
 
+    // Sometimes Leaflet initializes before the layout is fully settled (esp. after page switches),
+    // which can leave blank strips. Force a size recalculation.
+    setTimeout(() => {
+      try {
+        map.invalidateSize()
+      } catch {
+        // ignore
+      }
+    }, 0)
+
     return () => {
       map.remove()
     }
