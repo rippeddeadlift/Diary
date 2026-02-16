@@ -14,10 +14,21 @@ type Sidecar = {
 }
 
 function MapBlock({ lat, lon }: { lat: number; lon: number }) {
+  const [showMap, setShowMap] = useState(false)
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setShowMap(true), 200)
+    return () => window.clearTimeout(t)
+  }, [])
+
   return (
     <>
       <div className="overflow-hidden rounded-md border">
-        <PhotoPointMap lat={lat} lon={lon} />
+        {showMap ? (
+          <PhotoPointMap lat={lat} lon={lon} />
+        ) : (
+          <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">Karte lädt…</div>
+        )}
       </div>
       <div className="font-mono text-xs text-muted-foreground">
         {lat.toFixed(6)}, {lon.toFixed(6)}
