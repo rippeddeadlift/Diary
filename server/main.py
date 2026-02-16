@@ -9,6 +9,7 @@ from typing import List
 
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 APP_TITLE = "Diary Upload Server"
 
@@ -51,10 +52,44 @@ def unique_filename(prefix: str, original: str) -> str:
 
 app = FastAPI(title=APP_TITLE)
 
+# Read-only access to Diary/data for the gallery (served under /files)
+DATA_DIR = ROOT / "data"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/files", StaticFiles(directory=str(DATA_DIR)), name="files")
+
 
 @app.get("/api/health")
 def health():
     return {"ok": True, "time": now_local_iso()}
+
+
+def is_image_file(p: Path) -> bool:
+    return p.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp", ".heic"}
+
+
+@app.get("/api/photos/inbox/all")
+def list_inbox_all():
+    PHOTOS_INBOX_DIR.mkdir(parents=True, exist_ok=True)
+
+    items = []
+    for p in sorted(PHOTOS_INBOX_DIR.rglob("*")):
+        if not p.is_file():
+            continue
+        if not is_image_file(p):
+            continue
+
+        rel = p.relative_to(DATA_DIR).as_posix()  # e.g. photos/inbox/.../x.jpg
+        sidecar = p.with_suffix(p.suffix + ".json")
+        items.append(
+            {
+                "path": rel,
+                "url": f"/files/{rel}",
+                "hasSidecar": sidecar.exists(),
+                "sidecarPath": sidecar.relative_to(DATA_DIR).as_posix() if sidecar.exists() else None,
+            }
+        )
+
+    return {"ok": True, "count": len(items), "items": items}
 
 
 @app.post("/api/photos/upload")

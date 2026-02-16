@@ -9,13 +9,34 @@ type UploadResult = {
   saved?: Array<{ file: string; sidecar: string; originalName?: string }>
 }
 
+type GalleryItem = {
+  path: string
+  url: string
+  hasSidecar: boolean
+}
+
 export function PhotosPage() {
   const [files, setFiles] = useState<FileList | null>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [result, setResult] = useState<UploadResult | null>(null)
 
+  const [gallery, setGallery] = useState<GalleryItem[]>([])
+  const [galleryErr, setGalleryErr] = useState<string | null>(null)
+
   const fileCount = useMemo(() => (files ? files.length : 0), [files])
+
+  async function loadGallery() {
+    try {
+      setGalleryErr(null)
+      const res = await fetch('/api/photos/inbox/all')
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+      const json = (await res.json()) as { ok: boolean; items: GalleryItem[] }
+      setGallery(json.items ?? [])
+    } catch (e: any) {
+      setGalleryErr(e?.message ?? String(e))
+    }
+  }
 
   async function onUpload() {
     if (!files || files.length === 0) return
@@ -41,6 +62,7 @@ export function PhotosPage() {
       const json = (await res.json()) as UploadResult
       setResult(json)
       setFiles(null)
+      await loadGallery()
     } catch (e: any) {
       setErr(e?.message ?? String(e))
     } finally {
@@ -60,16 +82,14 @@ export function PhotosPage() {
             <code>.json</code> Sidecar angelegt.
           </p>
 
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={(e) => setFiles(e.target.files)}
-          />
+          <input type="file" accept="image/*" multiple onChange={(e) => setFiles(e.target.files)} />
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button onClick={onUpload} disabled={busy || fileCount === 0}>
               {busy ? 'Upload…' : `Upload (${fileCount})`}
+            </Button>
+            <Button variant="outline" onClick={loadGallery} disabled={busy}>
+              Reload Galerie
             </Button>
           </div>
 
@@ -88,12 +108,30 @@ export function PhotosPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Später</CardTitle>
+          <CardTitle className="text-base">Galerie (Inbox)</CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Nächster Schritt (nach dem MVP): Galerie + Tagging UI (people/tags/caption) direkt im Tagebuch.
-          </p>
+        <CardContent className="space-y-3">
+          {galleryErr ? <div className="text-sm text-destructive">{galleryErr}</div> : null}
+
+          {gallery.length === 0 ? (
+            <div className="text-sm text-muted-foreground">Noch keine Fotos gefunden. (Oder Backend läuft nicht.)</div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+              {gallery.map((it) => (
+                <div key={it.path} className="overflow-hidden rounded-lg border bg-muted">
+                  <img
+                    src={it.url}
+                    alt={it.path}
+                    loading="lazy"
+                    className="block aspect-square w-full object-cover"
+                  />
+                  <div className="p-2 text-xs text-muted-foreground">
+                    {it.hasSidecar ? 'taggable' : 'no json'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
