@@ -3,3 +3,11 @@ node_modules
 dist
 .DS_Store
 *.log
+
+# Python
+server/.venv/
+**/__pycache__/
+*.pyc
+
+# Local photo inbox content (optional: keep out of git; decide later)
+data/photos/
