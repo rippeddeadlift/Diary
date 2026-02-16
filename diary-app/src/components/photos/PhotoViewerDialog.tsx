@@ -13,6 +13,27 @@ type Sidecar = {
   caption: string
 }
 
+function MapBlock({ lat, lon }: { lat: number; lon: number }) {
+  const [showMap, setShowMap] = useState(false)
+
+  return (
+    <>
+      <div className="font-mono text-xs text-muted-foreground">
+        {lat.toFixed(6)}, {lon.toFixed(6)}
+      </div>
+      {showMap ? (
+        <div className="overflow-hidden rounded-md border">
+          <PhotoPointMap lat={lat} lon={lon} />
+        </div>
+      ) : (
+        <Button variant="outline" size="sm" onClick={() => setShowMap(true)}>
+          Karte laden
+        </Button>
+      )}
+    </>
+  )
+}
+
 export function PhotoViewerDialog({ item, onClose }: { item: GalleryItem | null; onClose: () => void }) {
   const [people, setPeople] = useState<string[]>([])
   const [tags, setTags] = useState<string[]>([])
@@ -135,12 +156,7 @@ export function PhotoViewerDialog({ item, onClose }: { item: GalleryItem | null;
               </DialogHeader>
               {item.location ? (
                 <div className="mt-3 space-y-2">
-                  <div className="overflow-hidden rounded-md border">
-                    <PhotoPointMap lat={item.location.lat} lon={item.location.lon} />
-                  </div>
-                  <div className="font-mono text-xs text-muted-foreground">
-                    {item.location.lat.toFixed(6)}, {item.location.lon.toFixed(6)}
-                  </div>
+                  <MapBlock lat={item.location.lat} lon={item.location.lon} />
                 </div>
               ) : (
                 <div className="mt-3 text-sm text-muted-foreground">Kein GPS im Foto.</div>
