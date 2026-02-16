@@ -10,16 +10,27 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .config import DATA_DIR, PHOTOS_INBOX_DIR, ROOT
-from .models import GalleryItem, GalleryListResponse, UploadResponse, UploadSavedItem
+from .models import (
+    GalleryItem,
+    GalleryListResponse,
+    SidecarGetResponse,
+    SidecarModel,
+    SidecarUpdateRequest,
+    SidecarUpdateResponse,
+    UploadResponse,
+    UploadSavedItem,
+)
 from .photos_repo import (
     batch_folder_name,
     build_sidecar_for_image,
     list_inbox_images,
-    load_sidecar,
+    load_or_init_sidecar_for_image,
+    resolve_data_path,
     save_sidecar,
     sidecar_path_for,
     unique_filename,
     sort_gallery_items,
+    update_sidecar_fields,
 )
 
 APP_TITLE = "Diary Upload Server"
@@ -45,7 +56,7 @@ def list_inbox_all():
     for img in list_inbox_images():
         rel = img.relative_to(DATA_DIR).as_posix()
         sc_path = sidecar_path_for(img)
-        sc = load_sidecar(sc_path) if sc_path.exists() else {}
+        sc = load_or_init_sidecar_for_image(img) if sc_path.exists() else {}
 
         created_at = sc.get("createdAt")
         created_src = sc.get("createdAtSource")
@@ -96,6 +107,42 @@ def list_inbox_all():
     # We don't expose errors in the typed response model; keep count stable.
     # If you need diagnostics, check server logs.
     return GalleryListResponse(count=len(items), items=items)
+
+
+@app.get("/api/photos/sidecar", response_model=SidecarGetResponse)
+def get_sidecar(path: str):
+    img = resolve_data_path(path)
+    if not img.exists():
+        return JSONResponse({"ok": False, "error": "Not found"}, status_code=404)
+
+    sc_path = sidecar_path_for(img)
+    sidecar = load_or_init_sidecar_for_image(img)
+    if not sc_path.exists():
+        save_sidecar(sc_path, sidecar)
+
+    return SidecarGetResponse(
+        path=str(img.relative_to(DATA_DIR)).replace("\\", "/"),
+        sidecarPath=str(sc_path.relative_to(DATA_DIR)).replace("\\", "/"),
+        sidecar=SidecarModel(**sidecar),
+    )
+
+
+@app.post("/api/photos/sidecar", response_model=SidecarUpdateResponse)
+def update_sidecar(req: SidecarUpdateRequest):
+    img = resolve_data_path(req.path)
+    if not img.exists():
+        return JSONResponse({"ok": False, "error": "Not found"}, status_code=404)
+
+    sc_path = sidecar_path_for(img)
+    sidecar = load_or_init_sidecar_for_image(img)
+    sidecar = update_sidecar_fields(sidecar, req.people, req.tags, req.caption)
+    save_sidecar(sc_path, sidecar)
+
+    return SidecarUpdateResponse(
+        path=str(img.relative_to(DATA_DIR)).replace("\\", "/"),
+        sidecarPath=str(sc_path.relative_to(DATA_DIR)).replace("\\", "/"),
+        sidecar=SidecarModel(**sidecar),
+    )
 
 
 @app.post("/api/photos/upload", response_model=UploadResponse)

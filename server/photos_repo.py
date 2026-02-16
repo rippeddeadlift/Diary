@@ -44,6 +44,33 @@ def sidecar_path_for(img: Path) -> Path:
     return img.with_suffix(img.suffix + ".json")
 
 
+def resolve_data_path(rel: str) -> Path:
+    """Resolve a path relative to DATA_DIR and prevent traversal."""
+    rel = rel.lstrip("/\\")
+    p = (DATA_DIR / rel).resolve()
+    data_root = DATA_DIR.resolve()
+    if not str(p).startswith(str(data_root)):
+        raise ValueError("Path traversal")
+    return p
+
+
+def load_or_init_sidecar_for_image(img: Path) -> dict[str, Any]:
+    sc_path = sidecar_path_for(img)
+    if sc_path.exists():
+        sc = load_sidecar(sc_path)
+    else:
+        sc = {}
+    return ensure_sidecar_fields(sc)
+
+
+def update_sidecar_fields(sc: dict[str, Any], people: list[str], tags: list[str], caption: str) -> dict[str, Any]:
+    sc = ensure_sidecar_fields(sc)
+    sc["people"] = people
+    sc["tags"] = tags
+    sc["caption"] = caption
+    return sc
+
+
 def load_sidecar(path: Path) -> dict[str, Any]:
     try:
         return json.loads(path.read_text(encoding="utf-8"))

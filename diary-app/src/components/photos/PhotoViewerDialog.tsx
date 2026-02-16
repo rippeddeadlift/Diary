@@ -1,15 +1,68 @@
+import { useEffect, useMemo, useState } from 'react'
 import type { GalleryItem } from '@/types/photos'
 import { formatDateTimeEU } from '@/lib/format'
+import { parseCsvList, toCsvList } from '@/lib/tags'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { PhotoPointMap } from '@/components/maps/PhotoPointMap'
+import { Button } from '@/components/ui/button'
 
-export function PhotoViewerDialog({
-  item,
-  onClose
-}: {
-  item: GalleryItem | null
-  onClose: () => void
-}) {
+type Sidecar = {
+  people: string[]
+  tags: string[]
+  caption: string
+}
+
+export function PhotoViewerDialog({ item, onClose }: { item: GalleryItem | null; onClose: () => void }) {
+  const [peopleStr, setPeopleStr] = useState('')
+  const [tagsStr, setTagsStr] = useState('')
+  const [caption, setCaption] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  const path = item?.path
+
+  useEffect(() => {
+    if (!path) return
+
+    ;(async () => {
+      try {
+        setErr(null)
+        const res = await fetch(`/api/photos/sidecar?path=${encodeURIComponent(path)}`)
+        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+        const json = (await res.json()) as { ok: boolean; sidecar: Sidecar }
+        setPeopleStr(toCsvList(json.sidecar?.people))
+        setTagsStr(toCsvList(json.sidecar?.tags))
+        setCaption(json.sidecar?.caption ?? '')
+      } catch (e: any) {
+        setErr(e?.message ?? String(e))
+      }
+    })()
+  }, [path])
+
+  const people = useMemo(() => parseCsvList(peopleStr), [peopleStr])
+  const tags = useMemo(() => parseCsvList(tagsStr), [tagsStr])
+
+  async function onSave() {
+    if (!path) return
+    setBusy(true)
+    setErr(null)
+    try {
+      const res = await fetch('/api/photos/sidecar', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ path, people, tags, caption })
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(`${res.status} ${res.statusText}: ${text}`)
+      }
+    } catch (e: any) {
+      setErr(e?.message ?? String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <Dialog open={!!item} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="p-0">
@@ -22,6 +75,44 @@ export function PhotoViewerDialog({
               <div className="mt-2 text-xs text-muted-foreground">
                 <div className="font-mono break-all">{item.path}</div>
                 {item.createdAt ? <div>{formatDateTimeEU(item.createdAt)}</div> : null}
+              </div>
+
+              <div className="mt-4 space-y-2">
+                <DialogHeader>
+                  <DialogTitle className="text-base">Tags</DialogTitle>
+                </DialogHeader>
+
+                <label className="block text-xs text-muted-foreground">People (slugs, Komma getrennt)</label>
+                <input
+                  value={peopleStr}
+                  onChange={(e) => setPeopleStr(e.target.value)}
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                  placeholder="nastya, ivan"
+                />
+
+                <label className="block text-xs text-muted-foreground">Tags (Komma getrennt)</label>
+                <input
+                  value={tagsStr}
+                  onChange={(e) => setTagsStr(e.target.value)}
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                  placeholder="family, nature, cycling"
+                />
+
+                <label className="block text-xs text-muted-foreground">Caption</label>
+                <textarea
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value)}
+                  className="min-h-[80px] w-full rounded-md border bg-background px-3 py-2 text-sm"
+                  placeholder="Kurze Notiz…"
+                />
+
+                <div className="flex items-center gap-2">
+                  <Button onClick={onSave} disabled={busy}>
+                    {busy ? 'Speichern…' : 'Speichern'}
+                  </Button>
+                </div>
+
+                {err ? <div className="text-sm text-destructive">{err}</div> : null}
               </div>
             </div>
 

@@ -41,3 +41,37 @@ class UploadResponse(BaseModel):
     batch: str
     count: int
     saved: list[UploadSavedItem]
+
+
+class SidecarModel(BaseModel):
+    people: list[str] = []
+    tags: list[str] = []
+    caption: str = ""
+
+    createdAt: Optional[str] = None
+    createdAtSource: Optional[str] = None
+    addedAt: Optional[str] = None
+
+    location: Optional[Location] = None
+    locationSource: Optional[str] = None
+
+
+class SidecarGetResponse(BaseModel):
+    ok: bool = True
+    path: str
+    sidecarPath: str
+    sidecar: SidecarModel
+
+
+class SidecarUpdateRequest(BaseModel):
+    path: str
+    people: list[str] = []
+    tags: list[str] = []
+    caption: str = ""
+
+
+class SidecarUpdateResponse(BaseModel):
+    ok: bool = True
+    path: str
+    sidecarPath: str
+    sidecar: SidecarModel
