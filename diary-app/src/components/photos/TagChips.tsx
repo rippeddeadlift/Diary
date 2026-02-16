@@ -4,11 +4,13 @@ import { cn } from '@/lib/utils'
 export function TagChips({
   options,
   value,
-  onChange
+  onChange,
+  hideInactive
 }: {
   options: readonly string[]
   value: string[]
   onChange: (next: string[]) => void
+  hideInactive?: boolean
 }) {
   function toggle(tag: string) {
     const has = value.includes(tag)
@@ -20,6 +22,7 @@ export function TagChips({
     <div className="flex flex-wrap gap-2">
       {options.map((opt) => {
         const active = value.includes(opt)
+        if (hideInactive && !active) return null
         return (
           <button type="button" key={opt} onClick={() => toggle(opt)}>
             <Badge
