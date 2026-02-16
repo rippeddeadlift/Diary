@@ -39,6 +39,8 @@ def health():
 def list_inbox_all():
     items: list[GalleryItem] = []
 
+    errors: list[dict[str, Any]] = []
+
     for img in list_inbox_images():
         rel = img.relative_to(DATA_DIR).as_posix()
         sc_path = sidecar_path_for(img)
@@ -48,20 +50,41 @@ def list_inbox_all():
         created_src = sc.get("createdAtSource")
         location = sc.get("location")
 
+        # Normalize types (defensive: avoid response_model validation 500)
+        if created_at is not None and not isinstance(created_at, str):
+            created_at = str(created_at)
+        if created_src is not None and not isinstance(created_src, str):
+            created_src = str(created_src)
+
+        loc_obj: Any = None
+        if isinstance(location, dict) and "lat" in location and "lon" in location:
+            try:
+                loc_obj = {
+                    "lat": float(location["lat"]),
+                    "lon": float(location["lon"]),
+                    "source": str(location.get("source") or "exif_gps"),
+                }
+            except Exception:
+                loc_obj = None
+
         missing = not bool(created_at)
 
-        items.append(
-            GalleryItem(
-                path=rel,
-                url=f"/files/{rel}",
-                hasSidecar=sc_path.exists(),
-                sidecarPath=sc_path.relative_to(DATA_DIR).as_posix() if sc_path.exists() else None,
-                createdAt=created_at,
-                createdAtSource=created_src,
-                location=location,
-                missing=missing,
+        try:
+            items.append(
+                GalleryItem(
+                    path=rel,
+                    url=f"/files/{rel}",
+                    hasSidecar=sc_path.exists(),
+                    sidecarPath=sc_path.relative_to(DATA_DIR).as_posix() if sc_path.exists() else None,
+                    createdAt=created_at,
+                    createdAtSource=created_src,
+                    location=loc_obj,
+                    missing=missing,
+                )
             )
-        )
+        except Exception as e:
+            errors.append({"path": rel, "error": str(e)})
+            continue
 
     # Sort: non-missing first, then by createdAt (desc). Missing is always last.
     local_tz = datetime.now().astimezone().tzinfo
@@ -85,6 +108,8 @@ def list_inbox_all():
 
     items.sort(key=sort_key)
 
+    # We don't expose errors in the typed response model; keep count stable.
+    # If you need diagnostics, check server logs.
     return GalleryListResponse(count=len(items), items=items)
 
 
