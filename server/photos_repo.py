@@ -131,3 +131,23 @@ def ensure_sidecar_fields(sidecar: dict[str, Any]) -> dict[str, Any]:
     if not sidecar.get("addedAt"):
         sidecar["addedAt"] = now_local_iso()
     return sidecar
+
+
+def sort_gallery_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Sort gallery items: non-missing first, then createdAt desc. Missing last."""
+
+    local_tz = datetime.now().astimezone().tzinfo
+
+    def sort_key(it: dict[str, Any]):
+        is_missing = 1 if it.get("missing") else 0
+        dt = parse_isoish(str(it.get("createdAt") or ""))
+        if dt is None:
+            ts = float("-inf")
+        else:
+            if dt.tzinfo is None and local_tz is not None:
+                dt = dt.replace(tzinfo=local_tz)
+            ts = dt.timestamp()
+        return (is_missing, -ts)
+
+    items.sort(key=sort_key)
+    return items

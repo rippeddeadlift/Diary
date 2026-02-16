@@ -19,6 +19,7 @@ from .photos_repo import (
     save_sidecar,
     sidecar_path_for,
     unique_filename,
+    sort_gallery_items,
 )
 
 APP_TITLE = "Diary Upload Server"
@@ -87,26 +88,10 @@ def list_inbox_all():
             continue
 
     # Sort: non-missing first, then by createdAt (desc). Missing is always last.
-    local_tz = datetime.now().astimezone().tzinfo
-
-    def parse_isoish(s: str):
-        try:
-            return datetime.fromisoformat(s)
-        except Exception:
-            return None
-
-    def sort_key(it: GalleryItem):
-        is_missing = 1 if it.missing else 0
-        dt = parse_isoish(str(it.createdAt or ""))
-        if dt is None:
-            ts = float("-inf")
-        else:
-            if dt.tzinfo is None and local_tz is not None:
-                dt = dt.replace(tzinfo=local_tz)
-            ts = dt.timestamp()
-        return (is_missing, -ts)
-
-    items.sort(key=sort_key)
+    # Keep the sort logic in photos_repo.
+    items_dicts = [it.model_dump() for it in items]
+    sort_gallery_items(items_dicts)
+    items = [GalleryItem(**d) for d in items_dicts]
 
     # We don't expose errors in the typed response model; keep count stable.
     # If you need diagnostics, check server logs.
