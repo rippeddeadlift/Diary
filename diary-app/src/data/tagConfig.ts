@@ -9,4 +9,4 @@ export const PEOPLE = [
   'mksaf'
 ] as const
 
-export const TAGS = ['family', 'nature', 'cycling', 'art', 'travel', 'attractions'] as const
+export const TAGS = ['family', 'nature', 'cycling', 'art', 'travel', 'sights'] as const
