@@ -2,13 +2,19 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Diary: Debug (Chrome)",
-      "type": "chrome",
+      "name": "Diary: Dev (Backend + Frontend)",
+      "type": "node",
       "request": "launch",
-      "url": "http://localhost:5173/",
-      "webRoot": "${workspaceFolder}/diary-app/src",
-      "preLaunchTask": "Diary: dev",
-      "sourceMaps": true
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "Write-Host 'Diary dev servers started via preLaunchTask. Close this debug session to stop nothing (terminate terminals manually).'; Start-Sleep -Seconds 360000"
+      ],
+      "preLaunchTask": "Diary: Start (Backend + Frontend)",
+      "console": "integratedTerminal"
     }
   ]
 }
