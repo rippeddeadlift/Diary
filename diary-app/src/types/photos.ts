@@ -4,6 +4,8 @@ export type GalleryItem = {
   path: string
   url: string
   hasSidecar: boolean
+  people?: string[]
+  tags?: string[]
   createdAt?: string | null
   location?: PhotoLocation
   missing?: boolean

@@ -58,11 +58,20 @@ def list_inbox_all():
         sc_path = sidecar_path_for(img)
         sc = load_or_init_sidecar_for_image(img) if sc_path.exists() else {}
 
+        people = sc.get("people") or []
+        tags = sc.get("tags") or []
         created_at = sc.get("createdAt")
         created_src = sc.get("createdAtSource")
         location = sc.get("location")
 
         # Normalize types (defensive: avoid response_model validation 500)
+        if not isinstance(people, list):
+            people = []
+        if not isinstance(tags, list):
+            tags = []
+        people = [str(x) for x in people if x is not None and str(x).strip()]
+        tags = [str(x) for x in tags if x is not None and str(x).strip()]
+
         if created_at is not None and not isinstance(created_at, str):
             created_at = str(created_at)
         if created_src is not None and not isinstance(created_src, str):
@@ -88,6 +97,8 @@ def list_inbox_all():
                     url=f"/files/{rel}",
                     hasSidecar=sc_path.exists(),
                     sidecarPath=sc_path.relative_to(DATA_DIR).as_posix() if sc_path.exists() else None,
+                    people=people,
+                    tags=tags,
                     createdAt=created_at,
                     createdAtSource=created_src,
                     location=loc_obj,
