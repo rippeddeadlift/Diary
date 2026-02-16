@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { PhotoPointMap } from '@/components/maps/PhotoPointMap'
 
 type UploadResult = {
   ok: boolean
@@ -13,6 +15,21 @@ type GalleryItem = {
   path: string
   url: string
   hasSidecar: boolean
+  createdAt?: string | null
+  location?: { lat: number; lon: number } | null
+  missing?: boolean
+}
+
+function formatDateTimeEU(iso?: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return String(iso)
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yyyy = d.getFullYear()
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mi = String(d.getMinutes()).padStart(2, '0')
+  return `${dd}.${mm}.${yyyy} ${hh}:${mi}`
 }
 
 export function PhotosPage() {
@@ -23,6 +40,8 @@ export function PhotosPage() {
 
   const [gallery, setGallery] = useState<GalleryItem[]>([])
   const [galleryErr, setGalleryErr] = useState<string | null>(null)
+
+  const [selected, setSelected] = useState<GalleryItem | null>(null)
 
   const fileCount = useMemo(() => (files ? files.length : 0), [files])
 
@@ -123,22 +142,64 @@ export function PhotosPage() {
           ) : (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
               {gallery.map((it) => (
-                <div key={it.path} className="overflow-hidden rounded-lg border bg-muted">
+                <button
+                  type="button"
+                  key={it.path}
+                  onClick={() => setSelected(it)}
+                  className="overflow-hidden rounded-lg border bg-muted text-left"
+                >
                   <img
                     src={it.url}
                     alt={it.path}
                     loading="lazy"
                     className="block aspect-square w-full object-cover"
                   />
-                  <div className="p-2 text-xs text-muted-foreground">
-                    {it.hasSidecar ? 'taggable' : 'no json'}
+                  <div className="flex items-center justify-between gap-2 p-2 text-xs text-muted-foreground">
+                    <span>{it.hasSidecar ? 'taggable' : 'no json'}</span>
+                    {it.createdAt ? <span className="font-mono">{formatDateTimeEU(it.createdAt)}</span> : null}
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
+        <DialogContent className="p-0">
+          {selected ? (
+            <div className="grid max-h-[90vh] grid-cols-1 overflow-auto sm:grid-cols-2">
+              <div className="p-4">
+                <div className="overflow-hidden rounded-md border bg-muted">
+                  <img src={selected.url} alt={selected.path} className="block h-auto w-full object-contain" />
+                </div>
+                <div className="mt-2 text-xs text-muted-foreground">
+                  <div className="font-mono break-all">{selected.path}</div>
+                  {selected.createdAt ? <div>{formatDateTimeEU(selected.createdAt)}</div> : null}
+                </div>
+              </div>
+
+              <div className="border-t p-4 sm:border-l sm:border-t-0">
+                <DialogHeader>
+                  <DialogTitle className="text-base">Ort</DialogTitle>
+                </DialogHeader>
+                {selected.location ? (
+                  <div className="mt-3 space-y-2">
+                    <div className="overflow-hidden rounded-md border">
+                      <PhotoPointMap lat={selected.location.lat} lon={selected.location.lon} />
+                    </div>
+                    <div className="font-mono text-xs text-muted-foreground">
+                      {selected.location.lat.toFixed(6)}, {selected.location.lon.toFixed(6)}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-3 text-sm text-muted-foreground">Kein GPS im Foto.</div>
+                )}
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
