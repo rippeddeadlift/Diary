@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { GalleryItem } from '@/types/photos'
-import { formatDateTimeEU } from '@/lib/format'
 import { parseCsvList, toCsvList } from '@/lib/tags'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { PhotoPointMap } from '@/components/maps/PhotoPointMap'
@@ -13,8 +12,8 @@ type Sidecar = {
 }
 
 export function PhotoViewerDialog({ item, onClose }: { item: GalleryItem | null; onClose: () => void }) {
-  const [peopleStr, setPeopleStr] = useState('')
-  const [tagsStr, setTagsStr] = useState('')
+  const [people, setPeople] = useState<string[]>([])
+  const [tags, setTags] = useState<string[]>([])
   const [caption, setCaption] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
@@ -30,8 +29,8 @@ export function PhotoViewerDialog({ item, onClose }: { item: GalleryItem | null;
         const res = await fetch(`/api/photos/sidecar?path=${encodeURIComponent(path)}`)
         if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
         const json = (await res.json()) as { ok: boolean; sidecar: Sidecar }
-        setPeopleStr(toCsvList(json.sidecar?.people))
-        setTagsStr(toCsvList(json.sidecar?.tags))
+        setPeople(json.sidecar?.people ?? [])
+        setTags(json.sidecar?.tags ?? [])
         setCaption(json.sidecar?.caption ?? '')
       } catch (e: any) {
         setErr(e?.message ?? String(e))
@@ -72,22 +71,18 @@ export function PhotoViewerDialog({ item, onClose }: { item: GalleryItem | null;
               <div className="overflow-hidden rounded-md border bg-muted">
                 <img src={item.url} alt={item.path} className="block h-auto w-full object-contain" />
               </div>
-              <div className="mt-2 text-xs text-muted-foreground">
-                <div className="font-mono break-all">{item.path}</div>
-                {item.createdAt ? <div>{formatDateTimeEU(item.createdAt)}</div> : null}
-              </div>
 
               <div className="mt-4 space-y-2">
                 <DialogHeader>
                   <DialogTitle className="text-base">Tags</DialogTitle>
                 </DialogHeader>
 
-                <label className="block text-xs text-muted-foreground">People (slugs, Komma getrennt)</label>
+                <label className="block text-xs text-muted-foreground">People (klein, Komma getrennt)</label>
                 <input
                   value={peopleStr}
                   onChange={(e) => setPeopleStr(e.target.value)}
                   className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                  placeholder="nastya, ivan"
+                  placeholder="person1, person2, ..."
                 />
 
                 <label className="block text-xs text-muted-foreground">Tags (Komma getrennt)</label>
