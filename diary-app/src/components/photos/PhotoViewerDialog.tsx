@@ -72,11 +72,7 @@ export function PhotoViewerDialog({ item, onClose }: { item: GalleryItem | null;
                 <img src={item.url} alt={item.path} className="block h-auto w-full object-contain" />
               </div>
 
-              <div className="mt-2 text-xs text-muted-foreground">
-                <div className="font-mono break-all">{item.path}</div>
-                {item.createdAt ? <div>{formatDateTimeEU(item.createdAt)}</div> : null}
-              </div>
-
+           
               <div className="mt-4 space-y-3">
                 <DialogHeader>
                   <DialogTitle className="text-base">Tags</DialogTitle>
