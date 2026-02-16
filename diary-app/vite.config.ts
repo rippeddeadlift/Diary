@@ -59,7 +59,9 @@ export default defineConfig({
     fs: { allow: ['..'] },
     // Proxy API calls to local upload backend (FastAPI)
     proxy: {
-      '/api': 'http://127.0.0.1:8787'
+      '/api': 'http://127.0.0.1:8787',
+      // Gallery images are served by FastAPI under /files
+      '/files': 'http://127.0.0.1:8787'
     }
   },
   resolve: {
