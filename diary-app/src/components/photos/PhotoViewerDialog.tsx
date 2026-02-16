@@ -3,7 +3,6 @@ import type { GalleryItem } from '@/types/photos'
 import { formatDateTimeEU } from '@/lib/format'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { PhotoPointMap } from '@/components/maps/PhotoPointMap'
-import { Button } from '@/components/ui/button'
 import { PEOPLE, TAGS } from '@/data/tagConfig'
 import { TagChips } from '@/components/photos/TagChips'
 import { Switch } from '@/components/ui/switch'
@@ -15,22 +14,14 @@ type Sidecar = {
 }
 
 function MapBlock({ lat, lon }: { lat: number; lon: number }) {
-  const [showMap, setShowMap] = useState(false)
-
   return (
     <>
+      <div className="overflow-hidden rounded-md border">
+        <PhotoPointMap lat={lat} lon={lon} />
+      </div>
       <div className="font-mono text-xs text-muted-foreground">
         {lat.toFixed(6)}, {lon.toFixed(6)}
       </div>
-      {showMap ? (
-        <div className="overflow-hidden rounded-md border">
-          <PhotoPointMap lat={lat} lon={lon} />
-        </div>
-      ) : (
-        <Button variant="outline" size="sm" onClick={() => setShowMap(true)}>
-          Karte laden
-        </Button>
-      )}
     </>
   )
 }
