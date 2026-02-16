@@ -17,6 +17,7 @@
         "owner": "diary-uvicorn",
         "pattern": [
           {
+            "kind": "file",
             "regexp": "^(.*)$",
             "file": 1,
             "message": 1
@@ -41,6 +42,7 @@
         "owner": "diary-vite",
         "pattern": [
           {
+            "kind": "file",
             "regexp": "^(.*)$",
             "file": 1,
             "message": 1
