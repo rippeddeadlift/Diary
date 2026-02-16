@@ -8,10 +8,9 @@ export function TripList({ trips, onOpen }: { trips: Trip[]; onOpen: (t: Trip) =
   if (trips.length === 0) return <div className="text-muted-foreground">Noch leer. Lege eine Tour im Ordner trips/ an…</div>
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-4 sm:grid-cols-2">
       {trips.map((t) => (
-        <button key={t.id} onClick={() => onOpen(t)} className="text-left">
-          <Card key={t.id} onClick={() => onOpen(t)} className="text-left transition hover:shadow-md">
+          <Card key={t.id} onClick={() => onOpen(t)} className="cursor-pointer text-left transition hover:shadow-md">
             <CardHeader>
               <CardTitle className="text-base">{t.meta.title}</CardTitle>
               <CardDescription className="flex items-center gap-2">
@@ -30,7 +29,6 @@ export function TripList({ trips, onOpen }: { trips: Trip[]; onOpen: (t: Trip) =
               ) : null}
             </CardHeader>
           </Card>
-        </button>
       ))}
     </div>
   )

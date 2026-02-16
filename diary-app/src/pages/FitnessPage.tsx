@@ -102,7 +102,7 @@ function FitnessDashboard({ onOpenDips, onOpenPullups }: { onOpenDips: () => voi
 function FitnessTile({ title, today, onClick }: { title: string; today: number; onClick: () => void }) {
   return (
     <button onClick={onClick} className="text-left">
-      <Card className="border-0 shadow-sm transition hover:shadow-md">
+      <Card className="shadow-sm transition hover:shadow-md">
         <CardHeader>
           <CardTitle className="text-lg">{title}</CardTitle>
         </CardHeader>
