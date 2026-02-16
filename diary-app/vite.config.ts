@@ -13,8 +13,8 @@ export default defineConfig({
     {
       name: 'serve-data-from-parent',
       configureServer(server) {
-        const tripsRoot = resolve(__dirname, '..', 'trips')
-        const fitnessRoot = resolve(__dirname, '..', 'fitness')
+        const toursRoot = resolve(__dirname, '..', 'data', 'tours')
+        const fitnessRoot = resolve(__dirname, '..', 'data', 'fitness')
 
         function serveDir(mount: string, rootDir: string) {
           server.middlewares.use(mount, (req, res, next) => {
@@ -49,7 +49,7 @@ export default defineConfig({
           })
         }
 
-        serveDir('/trips', tripsRoot)
+        serveDir('/tours', toursRoot)
         serveDir('/fitness', fitnessRoot)
       }
     }
