@@ -154,12 +154,23 @@ def main() -> int:
 
         created_at, created_src, lat, lon = extract_created_at_and_location(tags)
 
-        if need_created and created_at:
-            data["createdAt"] = created_at
-            data["createdAtSource"] = created_src or "exif"
+        # createdAt
+        if need_created:
+            if created_at:
+                data["createdAt"] = created_at
+                data["createdAtSource"] = created_src or "exif"
+            else:
+                # Mark explicitly missing so repeated runs don't keep touching this file
+                data["createdAt"] = None
+                data["createdAtSource"] = "missing"
 
-        if need_loc and lat is not None and lon is not None:
-            data["location"] = {"lat": lat, "lon": lon, "source": "exif_gps"}
+        # location
+        if need_loc:
+            if lat is not None and lon is not None:
+                data["location"] = {"lat": lat, "lon": lon, "source": "exif_gps"}
+            else:
+                data["location"] = None
+                data["locationSource"] = "missing"
 
         if not args.dry_run:
             sidecar.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

@@ -170,18 +170,26 @@ def list_inbox_all():
         sidecar_path = p.with_suffix(p.suffix + ".json")
 
         created_at = None
+        created_source = None
         location = None
+        missing = False
 
         if sidecar_path.exists():
             try:
                 sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
                 created_at = sidecar.get("createdAt")
+                created_source = sidecar.get("createdAtSource")
                 location = sidecar.get("location")
             except Exception:
                 pass
 
-        # Fallback: if createdAt missing, use filesystem mtime (still useful for ordering)
+        # If EXIF is missing, we want those photos to appear at the very end.
         if not created_at:
+            missing = True
+
+        # Only use filesystem time as a displayed fallback when there is no sidecar at all.
+        # (Otherwise we'd incorrectly push 'missing' photos to the top based on upload time.)
+        if missing and not sidecar_path.exists():
             created_at = datetime.fromtimestamp(p.stat().st_mtime).astimezone().isoformat(timespec="seconds")
 
         items.append(
@@ -191,15 +199,19 @@ def list_inbox_all():
                 "hasSidecar": sidecar_path.exists(),
                 "sidecarPath": sidecar_path.relative_to(DATA_DIR).as_posix() if sidecar_path.exists() else None,
                 "createdAt": created_at,
+                "createdAtSource": created_source,
                 "location": location,
+                "missing": missing,
             }
         )
 
     def sort_key(it: dict[str, Any]):
+        # missing goes last
+        is_missing = 1 if it.get("missing") else 0
         dt = _parse_isoish(str(it.get("createdAt") or ""))
-        return dt or datetime.min
+        # newest first among non-missing
+        return (is_missing, dt or datetime.min)
 
-    # newest first
     items.sort(key=sort_key, reverse=True)
 
     return {"ok": True, "count": len(items), "items": items}
@@ -247,8 +259,14 @@ async def upload_photos(files: List[UploadFile] = File(...)):
         }
         if created_src:
             sidecar["createdAtSource"] = created_src
+        else:
+            sidecar["createdAtSource"] = "missing" if created_at is None else "exif"
+
         if lat is not None and lon is not None:
             sidecar["location"] = {"lat": lat, "lon": lon, "source": "exif_gps"}
+        else:
+            sidecar["location"] = None
+            sidecar["locationSource"] = "missing"
 
         sidecar_path.write_text(json.dumps(sidecar, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
