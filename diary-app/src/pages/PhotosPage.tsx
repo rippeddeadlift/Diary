@@ -16,7 +16,10 @@ export function PhotosPage() {
       <PhotoUploadCard onUploaded={loadGallery} />
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Galerie</CardTitle>
+          <div className="flex items-baseline justify-between gap-3">
+            <CardTitle className="text-base">Galerie</CardTitle>
+            <div className="text-xs text-muted-foreground">{gallery.length} Fotos</div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-3">
           {galleryErr ? <div className="text-sm text-destructive">{galleryErr}</div> : null}
