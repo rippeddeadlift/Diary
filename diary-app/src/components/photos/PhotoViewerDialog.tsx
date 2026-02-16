@@ -79,7 +79,7 @@ export function PhotoViewerDialog({ item, onClose }: { item: GalleryItem | null;
                 </DialogHeader>
 
                 <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2">
-                  <div className="text-xs text-muted-foreground">Nur aktive anzeigen</div>
+                  <div className="text-xs text-muted-foreground">Settings</div>
                   <Switch checked={hideInactive} onCheckedChange={setHideInactive} />
                 </div>
 
