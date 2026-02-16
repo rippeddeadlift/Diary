@@ -84,7 +84,18 @@ def save_sidecar(path: Path, data: dict[str, Any]) -> None:
 
 def list_inbox_images() -> list[Path]:
     PHOTOS_INBOX_DIR.mkdir(parents=True, exist_ok=True)
-    files = [p for p in PHOTOS_INBOX_DIR.rglob("*") if p.is_file() and is_image_file(p)]
+
+    files: list[Path] = []
+    for p in PHOTOS_INBOX_DIR.rglob("*"):
+        if not p.is_file():
+            continue
+        if not is_image_file(p):
+            continue
+        # Ignore generated thumbnails directory
+        if "thumbs" in p.parts:
+            continue
+        files.append(p)
+
     files.sort()
     return files
 
