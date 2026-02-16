@@ -11,13 +11,7 @@ export function GalleryGrid({ items, onSelect }: { items: GalleryItem[]; onSelec
           onClick={() => onSelect(it)}
           className="overflow-hidden rounded-lg border bg-muted text-left"
         >
-          <img
-            src={it.thumbUrl || it.url}
-            alt={it.path}
-            loading="lazy"
-            decoding="async"
-            className="block aspect-square w-full object-cover"
-          />
+          <img src={it.url} alt={it.path} loading="lazy" className="block aspect-square w-full object-cover" />
           <div className="flex items-center justify-between gap-2 p-2 text-xs text-muted-foreground">
             <span>{it.hasSidecar ? 'taggable' : 'no json'}</span>
             {it.createdAt ? <span className="font-mono">{formatDateTimeEU(it.createdAt)}</span> : null}

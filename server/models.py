@@ -14,7 +14,6 @@ class Location(BaseModel):
 class GalleryItem(BaseModel):
     path: str  # relative to data/ (e.g. photos/inbox/.../x.jpg)
     url: str
-    thumbUrl: Optional[str] = None
     hasSidecar: bool
     sidecarPath: Optional[str] = None
 

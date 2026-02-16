@@ -32,7 +32,6 @@ from .photos_repo import (
     sort_gallery_items,
     update_sidecar_fields,
 )
-from .thumbs import ensure_thumbnail
 
 APP_TITLE = "Diary Upload Server"
 
@@ -82,21 +81,11 @@ def list_inbox_all():
 
         missing = not bool(created_at)
 
-        # Ensure thumbnail exists (best-effort; doesn't break if unsupported)
-        thumb_rel = None
-        thumb_path = ensure_thumbnail(img)
-        if thumb_path is not None:
-            try:
-                thumb_rel = thumb_path.relative_to(DATA_DIR).as_posix()
-            except Exception:
-                thumb_rel = None
-
         try:
             items.append(
                 GalleryItem(
                     path=rel,
                     url=f"/files/{rel}",
-                    thumbUrl=f"/files/{thumb_rel}" if thumb_rel else None,
                     hasSidecar=sc_path.exists(),
                     sidecarPath=sc_path.relative_to(DATA_DIR).as_posix() if sc_path.exists() else None,
                     createdAt=created_at,
@@ -179,9 +168,6 @@ async def upload_photos(files: List[UploadFile] = File(...)):
         sidecar = build_sidecar_for_image(out_path)
         sc_path = sidecar_path_for(out_path)
         save_sidecar(sc_path, sidecar)
-
-        # Best-effort thumbnail generation
-        ensure_thumbnail(out_path)
 
         saved.append(
             UploadSavedItem(
