@@ -205,14 +205,25 @@ def list_inbox_all():
             }
         )
 
+    local_tz = datetime.now().astimezone().tzinfo
+
     def sort_key(it: dict[str, Any]):
         # missing goes last
         is_missing = 1 if it.get("missing") else 0
-        dt = _parse_isoish(str(it.get("createdAt") or ""))
-        # newest first among non-missing
-        return (is_missing, dt or datetime.min)
 
-    items.sort(key=sort_key, reverse=True)
+        dt = _parse_isoish(str(it.get("createdAt") or ""))
+        if dt is None:
+            # Put unparsable dates after valid ones (but before missing)
+            ts = float("-inf")
+        else:
+            if dt.tzinfo is None and local_tz is not None:
+                dt = dt.replace(tzinfo=local_tz)
+            ts = dt.timestamp()
+
+        # Sort ascending by is_missing (0 first), and descending by timestamp
+        return (is_missing, -ts)
+
+    items.sort(key=sort_key)
 
     return {"ok": True, "count": len(items), "items": items}
 
