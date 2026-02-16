@@ -17,7 +17,7 @@ type Sidecar = {
 export function PhotoViewerDialog({ item, onClose }: { item: GalleryItem | null; onClose: () => void }) {
   const [people, setPeople] = useState<string[]>([])
   const [tags, setTags] = useState<string[]>([])
-  const [hideInactive, setHideInactive] = useState(false)
+  const [showAll, setShowAll] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
@@ -74,23 +74,25 @@ export function PhotoViewerDialog({ item, onClose }: { item: GalleryItem | null;
 
            
               <div className="mt-4 space-y-3">
-                <DialogHeader>
-                  <DialogTitle className="text-base">Tags</DialogTitle>
-                </DialogHeader>
-
-                <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2">
-                  <div className="text-xs text-muted-foreground">Settings</div>
-                  <Switch checked={hideInactive} onCheckedChange={setHideInactive} />
+                <div className="flex items-center justify-between">
+                  <DialogHeader>
+                    <DialogTitle className="text-base">Tags</DialogTitle>
+                  </DialogHeader>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Settings</span>
+                    <Switch checked={showAll} onCheckedChange={setShowAll} />
+                    <span className="text-xs text-muted-foreground">Alle anzeigen</span>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
                   <div className="text-xs text-muted-foreground">People</div>
-                  <TagChips options={PEOPLE} value={people} onChange={setPeople} hideInactive={hideInactive} />
+                  <TagChips options={PEOPLE} value={people} onChange={setPeople} hideInactive={!showAll} />
                 </div>
 
                 <div className="space-y-2">
                   <div className="text-xs text-muted-foreground">Tags</div>
-                  <TagChips options={TAGS} value={tags} onChange={setTags} hideInactive={hideInactive} />
+                  <TagChips options={TAGS} value={tags} onChange={setTags} hideInactive={!showAll} />
                 </div>
 
                 <div className="flex items-center gap-2">
