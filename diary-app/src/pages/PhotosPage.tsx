@@ -16,11 +16,6 @@ export function PhotosPage() {
     <div className="space-y-4">
       <PhotoUploadCard onUploaded={loadGallery} />
 
-      <div className="flex justify-end">
-        <Button variant="outline" onClick={loadGallery}>
-          Reload Galerie
-        </Button>
-      </div>
 
       <Card>
         <CardHeader>
