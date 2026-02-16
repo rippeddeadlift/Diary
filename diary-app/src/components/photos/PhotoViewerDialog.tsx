@@ -40,7 +40,7 @@ function MapBlock({ lat, lon }: { lat: number; lon: number }) {
 export function PhotoViewerDialog({ item, onClose }: { item: GalleryItem | null; onClose: () => void }) {
   const [people, setPeople] = useState<string[]>([])
   const [tags, setTags] = useState<string[]>([])
-  const [showAll, setShowAll] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
@@ -131,25 +131,29 @@ export function PhotoViewerDialog({ item, onClose }: { item: GalleryItem | null;
                   </DialogHeader>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">Settings</span>
-                    <Switch checked={showAll} onCheckedChange={setShowAll} />
+                    <Switch checked={settingsOpen} onCheckedChange={setSettingsOpen} />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="text-xs text-muted-foreground">People</div>
-                  <TagChips options={PEOPLE} value={people} onChange={setPeople} hideInactive={!showAll} />
-                </div>
+                {settingsOpen ? (
+                  <>
+                    <div className="space-y-2">
+                      <div className="text-xs text-muted-foreground">People</div>
+                      <TagChips options={PEOPLE} value={people} onChange={setPeople} />
+                    </div>
 
-                <div className="space-y-2">
-                  <div className="text-xs text-muted-foreground">Tags</div>
-                  <TagChips options={TAGS} value={tags} onChange={setTags} hideInactive={!showAll} />
-                </div>
+                    <div className="space-y-2">
+                      <div className="text-xs text-muted-foreground">Tags</div>
+                      <TagChips options={TAGS} value={tags} onChange={setTags} />
+                    </div>
 
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  {busy ? 'Speichern…' : dirty ? 'Ungespeichert (wird beim Schließen gespeichert)' : 'Gespeichert'}
-                </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {busy ? 'Speichern…' : dirty ? 'Ungespeichert (wird beim Schließen gespeichert)' : 'Gespeichert'}
+                    </div>
 
-                {err ? <div className="text-sm text-destructive">{err}</div> : null}
+                    {err ? <div className="text-sm text-destructive">{err}</div> : null}
+                  </>
+                ) : null}
               </div>
             </div>
 
