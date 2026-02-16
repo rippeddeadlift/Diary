@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { GalleryItem } from '@/types/photos'
-import { parseCsvList, toCsvList } from '@/lib/tags'
+import { formatDateTimeEU } from '@/lib/format'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { PhotoPointMap } from '@/components/maps/PhotoPointMap'
 import { Button } from '@/components/ui/button'
+import { PEOPLE, TAGS } from '@/data/tagConfig'
+import { TagChips } from '@/components/photos/TagChips'
 
 type Sidecar = {
   people: string[]
@@ -38,9 +40,6 @@ export function PhotoViewerDialog({ item, onClose }: { item: GalleryItem | null;
     })()
   }, [path])
 
-  const people = useMemo(() => parseCsvList(peopleStr), [peopleStr])
-  const tags = useMemo(() => parseCsvList(tagsStr), [tagsStr])
-
   async function onSave() {
     if (!path) return
     setBusy(true)
@@ -72,34 +71,35 @@ export function PhotoViewerDialog({ item, onClose }: { item: GalleryItem | null;
                 <img src={item.url} alt={item.path} className="block h-auto w-full object-contain" />
               </div>
 
-              <div className="mt-4 space-y-2">
+              <div className="mt-2 text-xs text-muted-foreground">
+                <div className="font-mono break-all">{item.path}</div>
+                {item.createdAt ? <div>{formatDateTimeEU(item.createdAt)}</div> : null}
+              </div>
+
+              <div className="mt-4 space-y-3">
                 <DialogHeader>
                   <DialogTitle className="text-base">Tags</DialogTitle>
                 </DialogHeader>
 
-                <label className="block text-xs text-muted-foreground">People (klein, Komma getrennt)</label>
-                <input
-                  value={peopleStr}
-                  onChange={(e) => setPeopleStr(e.target.value)}
-                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                  placeholder="person1, person2, ..."
-                />
+                <div className="space-y-2">
+                  <div className="text-xs text-muted-foreground">People</div>
+                  <TagChips options={PEOPLE} value={people} onChange={setPeople} />
+                </div>
 
-                <label className="block text-xs text-muted-foreground">Tags (Komma getrennt)</label>
-                <input
-                  value={tagsStr}
-                  onChange={(e) => setTagsStr(e.target.value)}
-                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                  placeholder="family, nature, cycling"
-                />
+                <div className="space-y-2">
+                  <div className="text-xs text-muted-foreground">Tags</div>
+                  <TagChips options={TAGS} value={tags} onChange={setTags} />
+                </div>
 
-                <label className="block text-xs text-muted-foreground">Caption</label>
-                <textarea
-                  value={caption}
-                  onChange={(e) => setCaption(e.target.value)}
-                  className="min-h-[80px] w-full rounded-md border bg-background px-3 py-2 text-sm"
-                  placeholder="Kurze Notiz…"
-                />
+                <div className="space-y-2">
+                  <div className="text-xs text-muted-foreground">Caption</div>
+                  <textarea
+                    value={caption}
+                    onChange={(e) => setCaption(e.target.value)}
+                    className="min-h-[80px] w-full rounded-md border bg-background px-3 py-2 text-sm"
+                    placeholder="Kurze Notiz…"
+                  />
+                </div>
 
                 <div className="flex items-center gap-2">
                   <Button onClick={onSave} disabled={busy}>
