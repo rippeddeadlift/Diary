@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { GalleryItem } from '@/types/photos'
 import { useGallery } from '@/hooks/useGallery'
@@ -15,8 +14,6 @@ export function PhotosPage() {
   return (
     <div className="space-y-4">
       <PhotoUploadCard onUploaded={loadGallery} />
-
-
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Galerie</CardTitle>
