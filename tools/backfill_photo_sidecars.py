@@ -141,8 +141,12 @@ def main() -> int:
         data.setdefault("caption", "")
         data.setdefault("addedAt", data.get("addedAt") or now_iso())
 
-        need_created = args.overwrite or not data.get("createdAt")
-        need_loc = args.overwrite or not data.get("location")
+        created_src = data.get("createdAtSource")
+        loc_src = data.get("locationSource")
+
+        # Only backfill if field is missing AND we didn't already mark it as missing
+        need_created = args.overwrite or (not data.get("createdAt") and created_src != "missing")
+        need_loc = args.overwrite or (not data.get("location") and loc_src != "missing")
 
         if not need_created and not need_loc:
             continue
