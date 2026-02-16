@@ -57,7 +57,7 @@ export default function App() {
 
           <pre className="mt-4 whitespace-pre-wrap rounded-lg bg-black p-4 text-sm text-white">{error}</pre>
           <p className="mt-3 text-sm text-muted-foreground">
-            Tipp: Stelle sicher, dass der Dev-Server den Ordner <code>../trips</code> sehen kann.
+            Tipp: Stelle sicher, dass der Dev-Server den Ordner <code>../data/trips</code> sehen kann.
           </p>
         </div>
       </div>

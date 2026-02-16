@@ -18,8 +18,8 @@ export function HomePage({ trips, onOpenTrip }: { trips: Trip[]; onOpenTrip: (t:
       <section className="rounded-xl border bg-card p-4 text-card-foreground">
         <h3 className="font-semibold">Neue Tour hinzufügen</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Lege einen neuen Ordner unter <code>trips/</code> an (mit <code>meta.json</code>, <code>route.gpx</code>, optional
-          <code>notes.md</code> und <code>photos/</code>) und ergänze <code>trips/index.json</code>.
+          Lege einen neuen Ordner unter <code>data/trips/</code> an (mit <code>meta.json</code>, <code>route.gpx</code>, optional
+          <code>notes.md</code>) und ergänze <code>data/trips/index.json</code>.
         </p>
       </section>
     </div>

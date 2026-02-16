@@ -56,7 +56,11 @@ export default defineConfig({
   ],
   server: {
     // Allow accessing parent folder during dev
-    fs: { allow: ['..'] }
+    fs: { allow: ['..'] },
+    // Proxy API calls to local upload backend (FastAPI)
+    proxy: {
+      '/api': 'http://127.0.0.1:8787'
+    }
   },
   resolve: {
     alias: {
