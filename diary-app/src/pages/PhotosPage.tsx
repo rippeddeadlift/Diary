@@ -113,7 +113,7 @@ export function PhotosPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Galerie (Inbox)</CardTitle>
+          <CardTitle className="text-base">Galerie</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {galleryErr ? <div className="text-sm text-destructive">{galleryErr}</div> : null}
