@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
@@ -37,6 +37,11 @@ export function PhotosPage() {
       setGalleryErr(e?.message ?? String(e))
     }
   }
+
+  useEffect(() => {
+    loadGallery()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function onUpload() {
     if (!files || files.length === 0) return
