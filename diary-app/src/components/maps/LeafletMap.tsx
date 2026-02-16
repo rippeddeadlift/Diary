@@ -57,7 +57,7 @@ export function LeafletMap({ gpxText }: { gpxText: string }) {
   return (
     <Card className="overflow-hidden">
       <CardHeader className="py-2">
-        <CardTitle className="text-base">GPX Route </CardTitle>
+        <CardTitle className="text-base">Route (GPX)</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
         <div ref={mapRef} className="h-[420px] w-full" />
