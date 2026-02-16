@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { GalleryItem } from '@/types/photos'
 import { formatDateTimeEU } from '@/lib/format'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { PhotoPointMap } from '@/components/maps/PhotoPointMap'
-import { Button } from '@/components/ui/button'
 import { PEOPLE, TAGS } from '@/data/tagConfig'
 import { TagChips } from '@/components/photos/TagChips'
 import { Switch } from '@/components/ui/switch'
@@ -21,6 +20,9 @@ export function PhotoViewerDialog({ item, onClose }: { item: GalleryItem | null;
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
+  const initialRef = useRef<{ people: string[]; tags: string[] } | null>(null)
+  const loadedRef = useRef(false)
+
   const path = item?.path
 
   useEffect(() => {
@@ -32,8 +34,12 @@ export function PhotoViewerDialog({ item, onClose }: { item: GalleryItem | null;
         const res = await fetch(`/api/photos/sidecar?path=${encodeURIComponent(path)}`)
         if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
         const json = (await res.json()) as { ok: boolean; sidecar: Sidecar }
-        setPeople(json.sidecar?.people ?? [])
-        setTags(json.sidecar?.tags ?? [])
+        const p = json.sidecar?.people ?? []
+        const t = json.sidecar?.tags ?? []
+        setPeople(p)
+        setTags(t)
+        initialRef.current = { people: p, tags: t }
+        loadedRef.current = true
         // caption intentionally omitted for now
       } catch (e: any) {
         setErr(e?.message ?? String(e))
@@ -41,8 +47,19 @@ export function PhotoViewerDialog({ item, onClose }: { item: GalleryItem | null;
     })()
   }, [path])
 
-  async function onSave() {
+  const dirty = useMemo(() => {
+    const init = initialRef.current
+    if (!loadedRef.current || !init) return false
+    const a = JSON.stringify({ people: init.people, tags: init.tags })
+    const b = JSON.stringify({ people, tags })
+    return a !== b
+  }, [people, tags])
+
+  async function save() {
     if (!path) return
+    if (!loadedRef.current) return
+    if (!dirty) return
+
     setBusy(true)
     setErr(null)
     try {
@@ -55,6 +72,7 @@ export function PhotoViewerDialog({ item, onClose }: { item: GalleryItem | null;
         const text = await res.text()
         throw new Error(`${res.status} ${res.statusText}: ${text}`)
       }
+      initialRef.current = { people: [...people], tags: [...tags] }
     } catch (e: any) {
       setErr(e?.message ?? String(e))
     } finally {
@@ -63,7 +81,16 @@ export function PhotoViewerDialog({ item, onClose }: { item: GalleryItem | null;
   }
 
   return (
-    <Dialog open={!!item} onOpenChange={(open) => !open && onClose()}>
+    <Dialog
+      open={!!item}
+      onOpenChange={(open) => {
+        if (!open) {
+          // Fire-and-forget save on close (don't block UI)
+          void save()
+          onClose()
+        }
+      }}
+    >
       <DialogContent className="p-0">
         {item ? (
           <div className="grid max-h-[90vh] grid-cols-1 overflow-auto sm:grid-cols-2">
@@ -81,7 +108,6 @@ export function PhotoViewerDialog({ item, onClose }: { item: GalleryItem | null;
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">Settings</span>
                     <Switch checked={showAll} onCheckedChange={setShowAll} />
-                    <span className="text-xs text-muted-foreground">Alle anzeigen</span>
                   </div>
                 </div>
 
@@ -95,10 +121,8 @@ export function PhotoViewerDialog({ item, onClose }: { item: GalleryItem | null;
                   <TagChips options={TAGS} value={tags} onChange={setTags} hideInactive={!showAll} />
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <Button onClick={onSave} disabled={busy}>
-                    {busy ? 'Speichern…' : 'Speichern'}
-                  </Button>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  {busy ? 'Speichern…' : dirty ? 'Ungespeichert (wird beim Schließen gespeichert)' : 'Gespeichert'}
                 </div>
 
                 {err ? <div className="text-sm text-destructive">{err}</div> : null}
