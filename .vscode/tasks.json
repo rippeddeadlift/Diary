@@ -14,15 +14,17 @@
       ],
       "isBackground": true,
       "problemMatcher": {
-        "owner": "uvicorn",
+        "owner": "diary-uvicorn",
         "pattern": [
           {
-            "regexp": ".+"
+            "regexp": "^(.*)$",
+            "file": 1,
+            "message": 1
           }
         ],
         "background": {
           "activeOnStart": true,
-          "beginsPattern": "Uvicorn running on",
+          "beginsPattern": ".*",
           "endsPattern": "Uvicorn running on"
         }
       }
@@ -36,23 +38,38 @@
       },
       "isBackground": true,
       "problemMatcher": {
-        "owner": "vite",
+        "owner": "diary-vite",
         "pattern": [
           {
-            "regexp": ".+"
+            "regexp": "^(.*)$",
+            "file": 1,
+            "message": 1
           }
         ],
         "background": {
           "activeOnStart": true,
           "beginsPattern": "VITE v",
-          "endsPattern": "ready in|Local:"
+          "endsPattern": "Local:|Network:|ready in"
         }
       }
     },
     {
-      "label": "Diary: Start (Backend + Frontend)",
-      "dependsOrder": "parallel",
-      "dependsOn": ["Diary: Backend (FastAPI)", "Diary: Frontend (Vite)"],
+      "label": "Diary: Open Chrome",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "Start-Process chrome.exe 'http://localhost:5173/'"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Diary: Start (Backend + Frontend + Chrome)",
+      "dependsOrder": "sequence",
+      "dependsOn": ["Diary: Backend (FastAPI)", "Diary: Frontend (Vite)", "Diary: Open Chrome"],
       "problemMatcher": []
     }
   ]

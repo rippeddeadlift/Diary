@@ -13,7 +13,7 @@
         "-Command",
         "Write-Host 'Diary dev servers started via preLaunchTask. Close this debug session to stop nothing (terminate terminals manually).'; Start-Sleep -Seconds 360000"
       ],
-      "preLaunchTask": "Diary: Start (Backend + Frontend)",
+      "preLaunchTask": "Diary: Start (Backend + Frontend + Chrome)",
       "console": "integratedTerminal"
     }
   ]
