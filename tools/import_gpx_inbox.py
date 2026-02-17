@@ -3,13 +3,8 @@
 
 Phase 1 MVP:
 - Scan a source folder (default: Windows Downloads) for *.gpx
-- Move them into Diary/data/import/gpx/
-- For each GPX in Diary/data/import/gpx/ (excluding _done/):
-  - Create a new trip folder under data/trips/<YYYY-MM-DD>-<slug>/
-  - Move the GPX into that trip folder
-  - Create meta.json
-  - Update data/trips/index.json
-  - Move the original source file into data/import/gpx/_done/ (if still present)
+- Import each GPX directly into Diary/data/trips/<YYYY-MM-DD>-<slug>/
+- After successful import, move the original GPX into Diary/data/import/gpx/_done/
 
 Usage (PowerShell, from repo root):
   python tools/import_gpx_inbox.py
@@ -124,64 +119,64 @@ def main() -> int:
     DONE_DIR.mkdir(parents=True, exist_ok=True)
     TRIPS_DIR.mkdir(parents=True, exist_ok=True)
 
-    # 1) Move .gpx from Downloads -> import folder (ignore partial downloads)
-    if source_dir.exists():
-        for p in sorted(source_dir.glob("*.gpx")):
-            if p.name.endswith(".crdownload"):
-                continue
-            target = IMPORT_DIR / p.name
-            # Avoid overwriting: if file exists, add suffix
-            if target.exists():
-                target = IMPORT_DIR / f"{p.stem}_{int(p.stat().st_mtime)}{p.suffix}"
-            move_file(p, target, dry_run=dry)
-
-    # 2) Import everything from import folder
     idx = load_index()
     trips = idx.get("trips", [])
 
     imported = 0
-    for gpx in sorted(IMPORT_DIR.glob("*.gpx")):
-        date = parse_gpx_date(gpx)
-        if not date:
-            # fallback: file mtime
-            date = datetime.fromtimestamp(gpx.stat().st_mtime).date().isoformat()
 
-        title = guess_title_from_filename(gpx.name)
-        base_id = f"{date}-{slugify(title)[:40]}"
-        trip_id = ensure_unique_trip_id(base_id, idx)
-        trip_path = TRIPS_DIR / trip_id
+    # Import directly from Downloads
+    if source_dir.exists():
+        for gpx in sorted(source_dir.glob("*.gpx")):
+            if gpx.name.endswith(".crdownload"):
+                continue
+            date = parse_gpx_date(gpx)
+            if not date:
+                # fallback: file mtime
+                date = datetime.fromtimestamp(gpx.stat().st_mtime).date().isoformat()
 
-        # Create folder
-        if not dry:
-            trip_path.mkdir(parents=True, exist_ok=True)
+            title = guess_title_from_filename(gpx.name)
+            base_id = f"{date}-{slugify(title)[:40]}"
+            trip_id = ensure_unique_trip_id(base_id, idx)
+            trip_path = TRIPS_DIR / trip_id
 
-        # Move GPX into trip folder
-        new_gpx_name = gpx.name
-        dst_gpx = trip_path / new_gpx_name
-        if dst_gpx.exists():
-            dst_gpx = trip_path / f"route{gpx.suffix}"
-        move_file(gpx, dst_gpx, dry_run=dry)
+            # Create folder
+            if not dry:
+                trip_path.mkdir(parents=True, exist_ok=True)
 
-        # meta.json
-        meta = {
-            "id": trip_id,
-            "title": title,
-            "date": date,
-            "tags": [],
-            "gpx": dst_gpx.name,
-        }
-        meta_path = trip_path / "meta.json"
-        if not dry:
-            meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            # Choose destination name
+            dst_gpx = trip_path / gpx.name
+            if dst_gpx.exists():
+                dst_gpx = trip_path / f"route{gpx.suffix}"
 
-        # index.json update (prepend newest)
-        if not any(t.get("id") == trip_id for t in trips):
-            trips.insert(0, {"id": trip_id, "path": trip_id})
+            # Copy into trip folder first (so we only archive/delete source after success)
+            dst_gpx.parent.mkdir(parents=True, exist_ok=True)
+            if not dry:
+                shutil.copy2(str(gpx), str(dst_gpx))
 
-        imported += 1
+            # meta.json
+            meta = {
+                "id": trip_id,
+                "title": title,
+                "date": date,
+                "tags": [],
+                "gpx": dst_gpx.name,
+            }
+            meta_path = trip_path / "meta.json"
+            if not dry:
+                meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
-        # Move a copy into _done (for traceability). If file already moved, skip.
-        # (In our flow, the file is already moved out of import dir into the trip.)
+            # index.json update (prepend newest)
+            if not any(t.get("id") == trip_id for t in trips):
+                trips.insert(0, {"id": trip_id, "path": trip_id})
+
+            # Archive original GPX into _done
+            done_target = DONE_DIR / gpx.name
+            if done_target.exists():
+                done_target = DONE_DIR / f"{gpx.stem}_{int(gpx.stat().st_mtime)}{gpx.suffix}"
+            if not dry:
+                shutil.move(str(gpx), str(done_target))
+
+            imported += 1
 
     idx["trips"] = trips
     save_index(idx, dry_run=dry)
