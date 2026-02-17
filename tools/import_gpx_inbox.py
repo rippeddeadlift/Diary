@@ -26,6 +26,9 @@ from pathlib import Path
 from typing import Optional
 import xml.etree.ElementTree as ET
 
+# Optional: auto-fill distanceKm after import
+from tools.update_trip_meta_from_gpx import gpx_distance_km
+
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data"
 IMPORT_DIR = DATA_DIR / "import" / "gpx"
@@ -182,6 +185,13 @@ def main() -> int:
                 shutil.copy2(str(gpx), str(dst_gpx))
 
             # meta.json
+            # Compute distance (best-effort)
+            distance_km = None
+            try:
+                distance_km = round(gpx_distance_km(dst_gpx), 2)
+            except Exception:
+                distance_km = None
+
             meta = {
                 "id": trip_id,
                 "title": title,
@@ -189,6 +199,8 @@ def main() -> int:
                 "tags": [],
                 "gpx": dst_gpx.name,
             }
+            if distance_km is not None:
+                meta["distanceKm"] = distance_km
             meta_path = trip_path / "meta.json"
             if not dry:
                 meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
