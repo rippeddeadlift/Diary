@@ -6,7 +6,8 @@ export const PEOPLE = [
   'leo',
   'bartek',
   'michal',
-  'mksaf'
+  'mksaf',
+  'loewa'
 ] as const
 
-export const TAGS = ['family', 'nature', 'cycling', 'art', 'travel', 'sights'] as const
+export const TAGS = ['family', 'friends', 'food', 'nature', 'cycling', 'art', 'travel', 'sights'] as const

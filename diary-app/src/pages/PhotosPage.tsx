@@ -1,10 +1,14 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { GalleryItem } from '@/types/photos'
 import { useGallery } from '@/hooks/useGallery'
 import { GalleryGrid } from '@/components/photos/GalleryGrid'
 import { PhotoViewerDialog } from '@/components/photos/PhotoViewerDialog'
 import { PhotoUploadCard } from '@/components/photos/PhotoUploadCard'
+import { Button } from '@/components/ui/button'
+import { Filter } from 'lucide-react'
+import { TagChips } from '@/components/photos/TagChips'
+import { PEOPLE, TAGS } from '@/data/tagConfig'
 
 export function PhotosPage() {
   const { items: gallery, error: galleryErr, reload: loadGallery } = useGallery()
