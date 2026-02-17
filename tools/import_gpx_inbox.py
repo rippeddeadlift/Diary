@@ -79,6 +79,27 @@ def guess_title_from_filename(name: str) -> str:
     return base or "Tour"
 
 
+def infer_tags_from_title(title: str) -> list[str]:
+    t = title.lower()
+    tags: list[str] = []
+
+    def has(*words: str) -> bool:
+        return any(w in t for w in words)
+
+    if has("fahrrad", "radtour", "rad ", "radfahren", "cycling", "bike", "gravel", "rennrad"):
+        tags.append("cycling")
+
+    if has("wandern", "wanderung", "hike", "hiking", "spaziergang"):
+        tags.append("hiking")
+
+    # de-dup, stable order
+    out: list[str] = []
+    for x in tags:
+        if x not in out:
+            out.append(x)
+    return out
+
+
 def parse_gpx_date(gpx_path: Path) -> Optional[str]:
     """Return YYYY-MM-DD if we can find a timestamp in the GPX."""
     try:
@@ -196,7 +217,7 @@ def main() -> int:
                 "id": trip_id,
                 "title": title,
                 "date": date,
-                "tags": [],
+                "tags": infer_tags_from_title(title),
                 "gpx": dst_gpx.name,
             }
             if distance_km is not None:
