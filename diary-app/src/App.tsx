@@ -7,6 +7,7 @@ import { PhotosPage } from '@/pages/PhotosPage'
 import { MenuPage } from '@/pages/MenuPage'
 import { FitnessPage } from '@/pages/FitnessPage'
 import { ToursPage } from '@/pages/ToursPage'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 type Page = 'menu' | 'home' | 'photos' | 'tours' | 'fitness'
 
@@ -65,7 +66,8 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <ErrorBoundary>
+      <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-5xl p-6">
         <header className="mb-6 flex items-center justify-between gap-3">
           <div className="flex items-baseline gap-3">
@@ -93,6 +95,7 @@ export default function App() {
           <ToursPage trips={trips} />
         )}
       </div>
-    </div>
+      </div>
+    </ErrorBoundary>
   )
 }
