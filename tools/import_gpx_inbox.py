@@ -43,8 +43,36 @@ def slugify(s: str) -> str:
 
 
 def guess_title_from_filename(name: str) -> str:
+    """Derive a human title from a Komoot-ish filename.
+
+    Examples:
+      2026-02-15_2786323503_Fahrradtour.gpx -> Fahrradtour
+      2025-11-03_2666929067_Gravel-Fahrt.gpx -> Gravel Fahrt
+      something (1).gpx -> something
+    """
+
     base = Path(name).stem
-    base = re.sub(r"[_-]+", " ", base).strip()
+
+    # Remove duplicate suffix like " (1)"
+    base = re.sub(r"\s*\(\d+\)\s*$", "", base)
+
+    # Split by underscores first (Komoot uses _ between date/id/title)
+    parts = [p for p in base.split("_") if p]
+
+    # Drop leading date part if present
+    if parts and re.fullmatch(r"\d{4}-\d{2}-\d{2}", parts[0]):
+        parts = parts[1:]
+
+    # Drop leading numeric id part if present
+    if parts and re.fullmatch(r"\d{6,}", parts[0]):
+        parts = parts[1:]
+
+    base = "_".join(parts) if parts else base
+
+    # Replace separators with spaces and collapse whitespace
+    base = re.sub(r"[_-]+", " ", base)
+    base = re.sub(r"\s+", " ", base).strip()
+
     return base or "Tour"
 
 
