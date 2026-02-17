@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CounterTracker } from '@/components/fitness/CounterTracker'
+import { MiniWeekBars } from '@/components/fitness/MiniWeekBars'
 import { formatDateEU, getTodayISO, loadSetsCsv, type SetsRow } from '@/data/setsCsv'
 
 type FitnessView = 'dashboard' | 'dips' | 'pullups'
@@ -85,8 +86,8 @@ function FitnessDashboard({ onOpenDips, onOpenPullups }: { onOpenDips: () => voi
       {err ? <div className="text-sm text-destructive">{err}</div> : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <FitnessTile title="Dips" today={dipsToday} onClick={onOpenDips} />
-        <FitnessTile title="Pull-ups" today={pullupsToday} onClick={onOpenPullups} />
+        <FitnessTile title="Dips" today={dipsToday} rows={dipsRows} todayISO={today} onClick={onOpenDips} />
+        <FitnessTile title="Pull-ups" today={pullupsToday} rows={pullupsRows} todayISO={today} onClick={onOpenPullups} />
       </div>
 
       <Card className="border-0 shadow-sm">
@@ -99,7 +100,19 @@ function FitnessDashboard({ onOpenDips, onOpenPullups }: { onOpenDips: () => voi
   )
 }
 
-function FitnessTile({ title, today, onClick }: { title: string; today: number; onClick: () => void }) {
+function FitnessTile({
+  title,
+  today,
+  rows,
+  todayISO,
+  onClick
+}: {
+  title: string
+  today: number
+  rows: SetsRow[] | null
+  todayISO: string
+  onClick: () => void
+}) {
   return (
     <button onClick={onClick} className="text-left">
       <Card className="shadow-sm transition hover:shadow-md">
@@ -109,6 +122,7 @@ function FitnessTile({ title, today, onClick }: { title: string; today: number; 
         <CardContent>
           <div className="text-sm text-muted-foreground">Heute</div>
           <div className="text-4xl font-semibold">{today}</div>
+          <MiniWeekBars rows={rows} todayISO={todayISO} />
         </CardContent>
       </Card>
     </button>
