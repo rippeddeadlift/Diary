@@ -21,7 +21,7 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
-TRIPS_DIR = ROOT / "trips"
+TRIPS_DIR = ROOT / "data" / "trips"
 INDEX = TRIPS_DIR / "index.json"
 
 NS = {"g": "http://www.topografix.com/GPX/1/1"}
