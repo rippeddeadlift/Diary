@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CounterTracker } from '@/components/fitness/CounterTracker'
-import { formatDateEU, getTodayISO, loadCounterCsv, type CounterRow } from '@/data/counterCsv'
+import { formatDateEU, getTodayISO, loadSetsCsv, type SetsRow } from '@/data/setsCsv'
 
 type FitnessView = 'dashboard' | 'dips' | 'pullups'
 
@@ -40,8 +40,8 @@ export function FitnessPage() {
 function FitnessDashboard({ onOpenDips, onOpenPullups }: { onOpenDips: () => void; onOpenPullups: () => void }) {
   const today = getTodayISO()
 
-  const [dipsRows, setDipsRows] = useState<CounterRow[] | null>(null)
-  const [pullupsRows, setPullupsRows] = useState<CounterRow[] | null>(null)
+  const [dipsRows, setDipsRows] = useState<SetsRow[] | null>(null)
+  const [pullupsRows, setPullupsRows] = useState<SetsRow[] | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
   // lightweight polling on the dashboard too
@@ -51,7 +51,7 @@ function FitnessDashboard({ onOpenDips, onOpenPullups }: { onOpenDips: () => voi
     const refresh = async () => {
       try {
         setErr(null)
-        const [dips, pullups] = await Promise.all([loadCounterCsv(DIPS_PATH), loadCounterCsv(PULLUPS_PATH)])
+        const [dips, pullups] = await Promise.all([loadSetsCsv(DIPS_PATH), loadSetsCsv(PULLUPS_PATH)])
         if (!cancelled) {
           setDipsRows(dips)
           setPullupsRows(pullups)
@@ -76,8 +76,8 @@ function FitnessDashboard({ onOpenDips, onOpenPullups }: { onOpenDips: () => voi
     }
   }, [])
 
-  const dipsToday = useMemo(() => dipsRows?.find((r) => r.date === today)?.count ?? 0, [dipsRows, today])
-  const pullupsToday = useMemo(() => pullupsRows?.find((r) => r.date === today)?.count ?? 0, [pullupsRows, today])
+  const dipsToday = useMemo(() => dipsRows?.find((r) => r.date === today)?.total ?? 0, [dipsRows, today])
+  const pullupsToday = useMemo(() => pullupsRows?.find((r) => r.date === today)?.total ?? 0, [pullupsRows, today])
 
   return (
     <div className="space-y-4">
