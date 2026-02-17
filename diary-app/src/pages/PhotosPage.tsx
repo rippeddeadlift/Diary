@@ -57,12 +57,12 @@ export function PhotosPage() {
           {filtersOpen ? (
             <div className="space-y-4 rounded-lg border bg-muted/20 p-3">
               <div className="space-y-2">
-                <div className="text-xs text-muted-foreground">People (AND)</div>
+                <div className="text-xs text-muted-foreground">People</div>
                 <TagChips options={PEOPLE} value={peopleFilter} onChange={setPeopleFilter} />
               </div>
 
               <div className="space-y-2">
-                <div className="text-xs text-muted-foreground">Tags (AND)</div>
+                <div className="text-xs text-muted-foreground">Tags</div>
                 <TagChips options={TAGS} value={tagFilter} onChange={setTagFilter} />
               </div>
 
