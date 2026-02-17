@@ -17,15 +17,20 @@ export default function App() {
 
   const [page, setPage] = useState<Page>('menu')
 
+  async function reloadTrips() {
+    setError(null)
+    setTrips(await loadTrips())
+  }
+
   useEffect(() => {
     ;(async () => {
       try {
-        setError(null)
-        setTrips(await loadTrips())
+        await reloadTrips()
       } catch (e: any) {
         setError(e?.message ?? String(e))
       }
     })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const subtitle = useMemo(() => {
@@ -92,7 +97,7 @@ export default function App() {
         ) : page === 'fitness' ? (
           <FitnessPage />
         ) : (
-          <ToursPage trips={trips} />
+          <ToursPage trips={trips} onReload={reloadTrips} />
         )}
       </div>
       </div>

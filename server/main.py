@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
+import re
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any, List
 
@@ -154,6 +157,33 @@ def update_sidecar(req: SidecarUpdateRequest):
         sidecarPath=str(sc_path.relative_to(DATA_DIR)).replace("\\", "/"),
         sidecar=SidecarModel(**sidecar),
     )
+
+
+@app.post("/api/trips/import-gpx")
+def import_gpx():
+    """Run GPX import (downloads -> data/trips) and archive originals to data/import/gpx/_done."""
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-m", "tools.import_gpx_inbox"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+    out = (proc.stdout or "") + ("\n" + proc.stderr if proc.stderr else "")
+    m = re.search(r"Imported:\s*(\d+)\s*GPX", proc.stdout or "")
+    imported = int(m.group(1)) if m else None
+
+    if proc.returncode != 0:
+        return JSONResponse(
+            {"ok": False, "returncode": proc.returncode, "output": out, "imported": imported},
+            status_code=500,
+        )
+
+    return {"ok": True, "imported": imported, "output": out}
 
 
 @app.post("/api/photos/upload", response_model=UploadResponse)
