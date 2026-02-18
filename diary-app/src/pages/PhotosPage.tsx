@@ -17,7 +17,7 @@ import { PEOPLE, TAGS } from '@/data/tagConfig'
 export function PhotosPage() {
   const { items: gallery, error: galleryErr, reload: loadGallery } = useGallery()
 
-  const [selected, setSelected] = useState<GalleryItem | null>(null)
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null)
   const [bulkOpen, setBulkOpen] = useState(false)
 
   const { selectionMode, selectedPaths, toggleSelected, clearSelected, selectAllFiltered } = useBulkSelection()
@@ -99,7 +99,7 @@ export function PhotosPage() {
           ) : (
             <GalleryGrid
               items={filtered}
-              onSelect={setSelected}
+              onSelect={(it) => setViewerIndex(filtered.findIndex((x) => x.path === it.path))}
               selectionMode={selectionMode}
               selected={selectedPaths}
               onToggleSelect={toggleSelected}
@@ -109,9 +109,11 @@ export function PhotosPage() {
       </Card>
 
       <PhotoViewerDialog
-        item={selected}
+        items={filtered}
+        index={viewerIndex}
+        onChangeIndex={setViewerIndex}
         onClose={() => {
-          setSelected(null)
+          setViewerIndex(null)
           // viewer interactions may have updated sidecars; keep gallery fresh
           void loadGallery()
         }}

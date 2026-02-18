@@ -37,7 +37,17 @@ function MapBlock({ lat, lon }: { lat: number; lon: number }) {
   )
 }
 
-export function PhotoViewerDialog({ item, onClose }: { item: GalleryItem | null; onClose: () => void }) {
+export function PhotoViewerDialog({
+  items,
+  index,
+  onChangeIndex,
+  onClose
+}: {
+  items: GalleryItem[]
+  index: number | null
+  onChangeIndex: (next: number | null) => void
+  onClose: () => void
+}) {
   const [people, setPeople] = useState<string[]>([])
   const [tags, setTags] = useState<string[]>([])
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -47,6 +57,7 @@ export function PhotoViewerDialog({ item, onClose }: { item: GalleryItem | null;
   const initialRef = useRef<{ people: string[]; tags: string[] } | null>(null)
   const loadedRef = useRef(false)
 
+  const item = index === null ? null : items[index] ?? null
   const path = item?.path
 
   useEffect(() => {
@@ -104,13 +115,34 @@ export function PhotoViewerDialog({ item, onClose }: { item: GalleryItem | null;
     }
   }
 
+  async function go(delta: number) {
+    if (index === null) return
+    const next = index + delta
+    if (next < 0 || next >= items.length) return
+    // Save current before moving on (fire-and-forget)
+    void save()
+    onChangeIndex(next)
+  }
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (index === null) return
+      if (e.key === 'ArrowLeft') void go(-1)
+      if (e.key === 'ArrowRight') void go(1)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, items.length])
+
   return (
     <Dialog
-      open={!!item}
+      open={index !== null}
       onOpenChange={(open) => {
         if (!open) {
           // Fire-and-forget save on close (don't block UI)
           void save()
+          onChangeIndex(null)
           onClose()
         }
       }}
@@ -119,8 +151,30 @@ export function PhotoViewerDialog({ item, onClose }: { item: GalleryItem | null;
         {item ? (
           <div className="grid max-h-[90vh] grid-cols-1 overflow-auto sm:grid-cols-2">
             <div className="p-4">
-              <div className="overflow-hidden rounded-md border bg-muted">
+              <div className="relative overflow-hidden rounded-md border bg-muted">
                 <img src={item.url} alt={item.path} className="block h-auto w-full object-contain" />
+
+                <div className="absolute inset-x-0 top-2 flex items-center justify-between px-2">
+                  <button
+                    type="button"
+                    onClick={() => void go(-1)}
+                    disabled={index === 0}
+                    className="rounded-md border bg-background/80 px-2 py-1 text-xs text-foreground disabled:opacity-40"
+                  >
+                    ←
+                  </button>
+                  <div className="rounded-md border bg-background/80 px-2 py-1 text-xs text-muted-foreground">
+                    {index! + 1} / {items.length}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void go(1)}
+                    disabled={index === items.length - 1}
+                    className="rounded-md border bg-background/80 px-2 py-1 text-xs text-foreground disabled:opacity-40"
+                  >
+                    →
+                  </button>
+                </div>
               </div>
 
            
