@@ -126,7 +126,6 @@ export function PhotosPage() {
             onTrash={async () => {
               const paths = Array.from(selectedPaths)
               if (paths.length === 0) return
-              if (!confirm(`${paths.length} Foto(s) in den Papierkorb verschieben?`)) return
 
               const res = await fetch('/api/photos/trash', {
                 method: 'POST',
@@ -135,6 +134,7 @@ export function PhotosPage() {
               })
               if (!res.ok) {
                 const text = await res.text()
+                // TODO: unify with app-wide toast later
                 alert(`${res.status} ${res.statusText}: ${text}`)
                 return
               }
