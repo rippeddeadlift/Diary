@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { GalleryItem, GalleryResponse } from '@/types/photos'
+import type { GalleryItem } from '@/types/photos'
+import { listGallery } from '@/api/photos'
 
 export function useGallery() {
   const [items, setItems] = useState<GalleryItem[]>([])
@@ -8,10 +9,7 @@ export function useGallery() {
   const reload = useCallback(async () => {
     try {
       setError(null)
-      const res = await fetch('/api/photos/inbox/all')
-      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
-      const json = (await res.json()) as GalleryResponse
-      setItems(json.items ?? [])
+      setItems(await listGallery())
     } catch (e: any) {
       setError(e?.message ?? String(e))
     }

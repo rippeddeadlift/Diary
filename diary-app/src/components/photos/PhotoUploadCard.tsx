@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { UploadResult } from '@/types/uploads'
+import { uploadPhotos } from '@/api/photos'
 
 export function PhotoUploadCard({ onUploaded }: { onUploaded: () => Promise<void> }) {
   const [files, setFiles] = useState<FileList | null>(null)
@@ -19,20 +20,7 @@ export function PhotoUploadCard({ onUploaded }: { onUploaded: () => Promise<void
     setResult(null)
 
     try {
-      const fd = new FormData()
-      for (const f of Array.from(files)) fd.append('files', f)
-
-      const res = await fetch('/api/photos/upload', {
-        method: 'POST',
-        body: fd
-      })
-
-      if (!res.ok) {
-        const text = await res.text()
-        throw new Error(`${res.status} ${res.statusText}: ${text}`)
-      }
-
-      const json = (await res.json()) as UploadResult
+      const json = await uploadPhotos(files)
       setResult(json)
       setFiles(null)
       await onUploaded()

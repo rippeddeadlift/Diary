@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { GalleryItem } from '@/types/photos'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { getSidecar, updateSidecar } from '@/api/photos'
 import { PhotoPointMap } from '@/components/maps/PhotoPointMap'
 import { PEOPLE, TAGS } from '@/data/tagConfig'
 import { TagChips } from '@/components/photos/TagChips'
@@ -65,11 +66,9 @@ export function PhotoViewerDialog({
     ;(async () => {
       try {
         setErr(null)
-        const res = await fetch(`/api/photos/sidecar?path=${encodeURIComponent(path)}`)
-        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
-        const json = (await res.json()) as { ok: boolean; sidecar: Sidecar }
-        const p = json.sidecar?.people ?? []
-        const t = json.sidecar?.tags ?? []
+        const sc = await getSidecar(path)
+        const p = sc.people ?? []
+        const t = sc.tags ?? []
         setPeople(p)
         setTags(t)
         initialRef.current = { people: p, tags: t }
@@ -97,15 +96,7 @@ export function PhotoViewerDialog({
     setBusy(true)
     setErr(null)
     try {
-      const res = await fetch('/api/photos/sidecar', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ path, people, tags, caption: '' })
-      })
-      if (!res.ok) {
-        const text = await res.text()
-        throw new Error(`${res.status} ${res.statusText}: ${text}`)
-      }
+      await updateSidecar({ path, people, tags })
       initialRef.current = { people: [...people], tags: [...tags] }
     } catch (e: any) {
       setErr(e?.message ?? String(e))
