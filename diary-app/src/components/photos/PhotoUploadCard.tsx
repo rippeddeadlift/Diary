@@ -3,12 +3,16 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { UploadResult } from '@/types/uploads'
 import { uploadPhotos } from '@/api/photos'
+import { chunkArray } from '@/lib/chunk'
+import { UploadProgress } from '@/components/photos/UploadProgress'
 
 export function PhotoUploadCard({ onUploaded }: { onUploaded: () => Promise<void> }) {
   const [files, setFiles] = useState<FileList | null>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [result, setResult] = useState<UploadResult | null>(null)
+  const [uploaded, setUploaded] = useState(0)
+  const [dupSkipped, setDupSkipped] = useState(0)
 
   const fileCount = useMemo(() => (files ? files.length : 0), [files])
 
@@ -18,10 +22,29 @@ export function PhotoUploadCard({ onUploaded }: { onUploaded: () => Promise<void
     setBusy(true)
     setErr(null)
     setResult(null)
+    setUploaded(0)
+    setDupSkipped(0)
 
     try {
-      const json = await uploadPhotos(files)
-      setResult(json)
+      const all = Array.from(files)
+      const batches = chunkArray(all, 25)
+
+      let totalSaved = 0
+      let totalDup = 0
+      let last: UploadResult | null = null
+
+      for (let i = 0; i < batches.length; i++) {
+        const batch = batches[i]
+        const json = await uploadPhotos(batch)
+        last = json
+        totalSaved += json.count ?? 0
+        totalDup += json.duplicatesSkipped ?? 0
+
+        setUploaded((i + 1) * 25 > all.length ? all.length : (i + 1) * 25)
+        setDupSkipped(totalDup)
+      }
+
+      setResult({ ok: true, batch: last?.batch, count: totalSaved, duplicatesSkipped: totalDup })
       setFiles(null)
       await onUploaded()
     } catch (e: any) {
@@ -49,6 +72,8 @@ export function PhotoUploadCard({ onUploaded }: { onUploaded: () => Promise<void
             {busy ? 'Upload…' : `Upload (${fileCount})`}
           </Button>
         </div>
+
+        {busy ? <UploadProgress done={uploaded} total={fileCount} duplicates={dupSkipped} /> : null}
 
         {err ? <div className="text-sm text-destructive">{err}</div> : null}
 
