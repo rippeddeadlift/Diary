@@ -72,6 +72,22 @@ export function PhotosPage() {
         <CardContent className="space-y-3">
           {filtersOpen ? (
             <div className="space-y-4 rounded-lg border bg-muted/20 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-xs text-muted-foreground">Filter</div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setPeopleFilter([])
+                    setTagFilter([])
+                    setUntaggedOnly(false)
+                  }}
+                >
+                  Zurücksetzen
+                </Button>
+              </div>
+
               <div className="space-y-2">
                 <div className="text-xs text-muted-foreground">People</div>
                 <TagChips options={PEOPLE} value={peopleFilter} onChange={setPeopleFilter} />
