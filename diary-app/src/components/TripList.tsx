@@ -24,26 +24,30 @@ export function TripList({ trips, onOpen }: { trips: Trip[]; onOpen: (t: Trip) =
               <div className="flex items-start justify-between gap-3">
                 <CardTitle className="text-base">{t.meta.title}</CardTitle>
                 {t.meta.preview?.points?.length ? (
-                  <RoutePreview points={t.meta.preview.points} bbox={t.meta.preview.bbox} className="h-14 w-24 rounded-md border bg-background/0 p-1" />
+                  <RoutePreview points={t.meta.preview.points} bbox={t.meta.preview.bbox} className="h-20 w-40 rounded-md bg-background/0"
+ />
                 ) : null}
               </div>
-              <CardDescription className="flex flex-wrap items-center gap-2">
-                <span>{formatDateEU(t.meta.date)}</span>
-                {typeof t.meta.distanceKm === 'number' ? <Badge variant="secondary">{t.meta.distanceKm.toFixed(1)} km</Badge> : null}
+              <div className="mt-1 text-sm text-muted-foreground">{formatDateEU(t.meta.date)}</div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {(t.meta.tags || []).slice(0, 3).map((tag) => (
+                  <Badge key={tag} variant="default">
+                    {tag}
+                  </Badge>
+                ))}
+                {(t.meta.tags?.length || 0) > 3 ? (
+                  <Badge variant="secondary">+{(t.meta.tags?.length || 0) - 3}</Badge>
+                ) : null}
+
+                {typeof t.meta.distanceKm === 'number' ? (
+                  <Badge variant="secondary">{t.meta.distanceKm.toFixed(1)} km</Badge>
+                ) : null}
+
                 {typeof t.meta.durationMin === 'number' ? (
                   <Badge variant="outline">⏱ {formatDurationMin(t.meta.durationMin)}</Badge>
                 ) : null}
-              </CardDescription>
-
-              {t.meta.tags?.length ? (
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {t.meta.tags.map((tag) => (
-                    <Badge key={tag} variant="default">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              ) : null}
+              </div>
             </CardHeader>
           </Card>
       ))}
