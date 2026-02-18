@@ -63,7 +63,7 @@ export function RoutePreview({
           strokeWidth={2.2}
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="text-primary/80"
+          className="text-white/90"
         />
       </svg>
     </div>

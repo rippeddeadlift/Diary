@@ -24,7 +24,7 @@ export function TripList({ trips, onOpen }: { trips: Trip[]; onOpen: (t: Trip) =
               <div className="flex items-start justify-between gap-3">
                 <CardTitle className="text-base">{t.meta.title}</CardTitle>
                 {t.meta.preview?.points?.length ? (
-                  <RoutePreview points={t.meta.preview.points} bbox={t.meta.preview.bbox} className="h-14 w-24 rounded-md border bg-muted/30 p-1" />
+                  <RoutePreview points={t.meta.preview.points} bbox={t.meta.preview.bbox} className="h-14 w-24 rounded-md border bg-background/0 p-1" />
                 ) : null}
               </div>
               <CardDescription className="flex flex-wrap items-center gap-2">
