@@ -27,7 +27,7 @@ from typing import Optional
 import xml.etree.ElementTree as ET
 
 # Optional: auto-fill computed fields after import
-from tools.update_trip_meta_from_gpx import gpx_distance_km, gpx_duration_minutes, gpx_preview
+from tools.update_trip_meta_from_gpx import gpx_distance_km, gpx_duration_minutes, gpx_preview, gpx_max_kmh
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data"
@@ -91,6 +91,21 @@ def infer_tags_from_title(title: str) -> list[str]:
 
     if has("wandern", "wanderung", "hike", "hiking", "spaziergang"):
         tags.append("hiking")
+
+    if has("laufen", "lauf", "jog", "jogging", "run", "running", "trailrun", "trail-running"):
+        tags.append("running")
+
+    if has(
+        "ski",
+        "skifahren",
+        "langlauf",
+        "loipe",
+        "skitour",
+        "ski tour",
+        "cross-country",
+        "xc-ski",
+    ):
+        tags.append("skiing")
 
     # de-dup, stable order
     out: list[str] = []
@@ -223,6 +238,11 @@ def main() -> int:
                 preview = gpx_preview(dst_gpx)
             except Exception:
                 preview = None
+            try:
+                mk = gpx_max_kmh(dst_gpx)
+                max_kmh = round(float(mk), 1) if mk is not None else None
+            except Exception:
+                max_kmh = None
 
             meta = {
                 "id": trip_id,
@@ -237,6 +257,8 @@ def main() -> int:
                 meta["durationMin"] = duration_min
             if distance_km is not None and duration_min is not None and duration_min > 0:
                 meta["avgKmh"] = round(float(distance_km) / (float(duration_min) / 60.0), 1)
+            if max_kmh is not None:
+                meta["maxKmh"] = max_kmh
             if preview is not None:
                 meta["preview"] = preview
             meta_path = trip_path / "meta.json"
