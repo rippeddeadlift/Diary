@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { GpxMap } from './maps/GpxMap'
 import { Notes } from './content/Notes'
+import { TripPhotoSuggestions } from '@/components/trips/TripPhotoSuggestions'
 import type { Trip } from '../data/trips'
 import { Button } from './ui/button'
 import { formatDateEU } from '@/lib/date'
@@ -91,6 +92,7 @@ export function TripView({
 
       <div className="grid grid-cols-1 gap-3">
         <GpxMap trip={trip} />
+        <TripPhotoSuggestions trip={trip} />
         <Notes trip={trip} />
       </div>
     </div>

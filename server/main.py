@@ -182,6 +182,92 @@ def list_inbox_all():
     return GalleryListResponse(count=len(items), items=items)
 
 
+@app.get("/api/photos/suggest", response_model=GalleryListResponse)
+def suggest_photos(date: str, bbox: str | None = None, limit: int = 200):
+    """Suggest inbox photos for a given day (YYYY-MM-DD).
+
+    Optional bbox: "minLat,minLon,maxLat,maxLon" to further filter by GPS.
+    """
+
+    # Basic date validation
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date or ""):
+        return JSONResponse({"ok": False, "error": "Invalid date"}, status_code=400)
+
+    bbox_vals: tuple[float, float, float, float] | None = None
+    if bbox:
+        try:
+            parts = [float(x) for x in bbox.split(",")]
+            if len(parts) == 4:
+                minLat, minLon, maxLat, maxLon = parts
+                if minLat > maxLat:
+                    minLat, maxLat = maxLat, minLat
+                if minLon > maxLon:
+                    minLon, maxLon = maxLon, minLon
+                bbox_vals = (minLat, minLon, maxLat, maxLon)
+        except Exception:
+            bbox_vals = None
+
+    items: list[GalleryItem] = []
+
+    for img in list_inbox_images():
+        if len(items) >= max(1, min(int(limit), 1000)):
+            break
+
+        rel = img.relative_to(DATA_DIR).as_posix()
+        sc_path = sidecar_path_for(img)
+        sc = load_or_init_sidecar_for_image(img) if sc_path.exists() else {}
+
+        created_at = sc.get("createdAt")
+        if not (isinstance(created_at, str) and created_at.startswith(date)):
+            continue
+
+        # Optional bbox filter (requires gps)
+        if bbox_vals is not None:
+            loc = sc.get("location")
+            try:
+                if not (isinstance(loc, dict) and "lat" in loc and "lon" in loc):
+                    continue
+                lat = float(loc["lat"])
+                lon = float(loc["lon"])
+                minLat, minLon, maxLat, maxLon = bbox_vals
+                if not (minLat <= lat <= maxLat and minLon <= lon <= maxLon):
+                    continue
+            except Exception:
+                continue
+
+        thumb_rel = f"photos/_thumbs/{rel}"
+        thumb_abs = (DATA_DIR / thumb_rel).resolve()
+        thumb_exists = thumb_abs.exists()
+
+        people = sc.get("people") or []
+        tags = sc.get("tags") or []
+        if not isinstance(people, list):
+            people = []
+        if not isinstance(tags, list):
+            tags = []
+        people = [str(x) for x in people if x is not None and str(x).strip()]
+        tags = [str(x) for x in tags if x is not None and str(x).strip()]
+
+        items.append(
+            GalleryItem(
+                path=rel,
+                url=f"/files/{rel}",
+                hasSidecar=sc_path.exists(),
+                sidecarPath=sc_path.relative_to(DATA_DIR).as_posix() if sc_path.exists() else None,
+                thumbUrl=f"/files/{thumb_rel}" if thumb_exists else None,
+                thumbExists=thumb_exists,
+                people=people,
+                tags=tags,
+                createdAt=str(created_at),
+                createdAtSource=str(sc.get("createdAtSource") or "exif"),
+                location=None,
+                missing=False,
+            )
+        )
+
+    return GalleryListResponse(count=len(items), items=items)
+
+
 @app.get("/api/photos/sidecar", response_model=SidecarGetResponse)
 def get_sidecar(path: str):
     img = resolve_data_path(path)

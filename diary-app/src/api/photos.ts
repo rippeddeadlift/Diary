@@ -19,6 +19,17 @@ export async function listGallery(): Promise<GalleryItem[]> {
   return json.items ?? []
 }
 
+export async function suggestPhotos(params: { date: string; bbox?: [number, number, number, number]; limit?: number }): Promise<GalleryItem[]> {
+  const qs = new URLSearchParams({ date: params.date })
+  if (params.bbox) qs.set('bbox', params.bbox.join(','))
+  if (typeof params.limit === 'number') qs.set('limit', String(params.limit))
+
+  const res = await fetch(`/api/photos/suggest?${qs.toString()}`)
+  if (!res.ok) throw new Error(errText(res))
+  const json = (await res.json()) as GalleryResponse
+  return json.items ?? []
+}
+
 export async function getSidecar(path: string): Promise<Sidecar> {
   const res = await fetch(`/api/photos/sidecar?path=${encodeURIComponent(path)}`)
   if (!res.ok) throw new Error(errText(res))
