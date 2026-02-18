@@ -37,6 +37,9 @@ from .photos_repo import (
     sort_gallery_items,
     update_sidecar_fields,
     bulk_toggle_sidecar_fields,
+    load_sha256_index,
+    save_sha256_index,
+    sha256_file,
 )
 
 APP_TITLE = "Diary Upload Server"
@@ -223,11 +226,14 @@ async def upload_photos(files: List[UploadFile] = File(...)):
 
     prefix = dt.strftime("%Y-%m-%dT%H%M%S")
 
+    sha_idx = load_sha256_index()
+
     saved: list[UploadSavedItem] = []
     for f in files:
         out_name = unique_filename(prefix, f.filename or "upload")
         out_path = batch_dir / out_name
 
+        # 1) Write file to disk
         with out_path.open("wb") as w:
             while True:
                 chunk = await f.read(1024 * 1024)
@@ -235,9 +241,36 @@ async def upload_photos(files: List[UploadFile] = File(...)):
                     break
                 w.write(chunk)
 
+        # 2) Compute hash and dedupe
+        try:
+            h = sha256_file(out_path)
+        except Exception:
+            h = None
+
+        if h and h in sha_idx:
+            existing_rel = sha_idx.get(h)
+            existing_path = (DATA_DIR / str(existing_rel)).resolve() if existing_rel else None
+            if existing_path and existing_path.exists():
+                # Duplicate: don't save (remove just-written file)
+                try:
+                    out_path.unlink(missing_ok=True)
+                except Exception:
+                    pass
+                continue
+            else:
+                # stale index entry, treat as new
+                sha_idx.pop(h, None)
+
+        # 3) Sidecar + index update
         sidecar = build_sidecar_for_image(out_path)
+        if h:
+            sidecar["sha256"] = h
         sc_path = sidecar_path_for(out_path)
         save_sidecar(sc_path, sidecar)
+
+        if h:
+            rel = out_path.relative_to(DATA_DIR).as_posix()
+            sha_idx[h] = rel
 
         saved.append(
             UploadSavedItem(
@@ -246,6 +279,12 @@ async def upload_photos(files: List[UploadFile] = File(...)):
                 originalName=f.filename,
             )
         )
+
+    # Persist hash index
+    try:
+        save_sha256_index(sha_idx)
+    except Exception:
+        pass
 
     return UploadResponse(
         batch=str(batch_dir.relative_to(ROOT)).replace("\\", "/"),

@@ -7,8 +7,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
+import hashlib
 
 from .config import DATA_DIR, IMG_EXTS, PHOTOS_INBOX_DIR
+
+SHA256_INDEX_PATH = DATA_DIR / "photos" / "_sha256_index.json"
 from .exif_utils import extract_created_at_and_location, read_exif
 
 
@@ -114,6 +117,31 @@ def load_sidecar(path: Path) -> dict[str, Any]:
 
 def save_sidecar(path: Path, data: dict[str, Any]) -> None:
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def load_sha256_index() -> dict[str, str]:
+    """hash -> relative path (posix)"""
+    try:
+        if SHA256_INDEX_PATH.exists():
+            data = json.loads(SHA256_INDEX_PATH.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                return {str(k): str(v) for k, v in data.items()}
+    except Exception:
+        pass
+    return {}
+
+
+def save_sha256_index(idx: dict[str, str]) -> None:
+    SHA256_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
+    SHA256_INDEX_PATH.write_text(json.dumps(idx, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def list_inbox_images() -> list[Path]:

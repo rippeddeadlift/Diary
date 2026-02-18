@@ -58,6 +58,8 @@ class SidecarModel(BaseModel):
     location: Optional[Location] = None
     locationSource: Optional[str] = None
 
+    sha256: Optional[str] = None
+
 
 class SidecarGetResponse(BaseModel):
     ok: bool = True
