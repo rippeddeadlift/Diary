@@ -2,8 +2,11 @@
   "id": "2026-02-15-heinenhof",
   "title": "Fahrradtour nach Heinenhof",
   "date": "2026-02-15",
-  "tags": ["cycling"],
+  "tags": [
+    "cycling"
+  ],
   "gpx": "2026-02-15_2786323503_Fahrradtour.gpx",
   "notes": "notes.md",
-  "distanceKm": 19.54
+  "distanceKm": 19.54,
+  "durationMin": 55
 }

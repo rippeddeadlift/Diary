@@ -55,6 +55,40 @@ def gpx_distance_km(path: Path) -> float:
     return dist / 1000.0
 
 
+def gpx_duration_minutes(path: Path) -> float | None:
+    """Return duration in minutes based on first/last <time> in trkpt (if present)."""
+    try:
+        root = ET.parse(path).getroot()
+        times: list[str] = []
+        for trkpt in root.findall(".//g:trkpt", NS):
+            t_el = trkpt.find("g:time", NS)
+            if t_el is not None and t_el.text:
+                times.append(t_el.text.strip())
+
+        if len(times) < 2:
+            return None
+
+        from datetime import datetime
+
+        def parse(t: str) -> datetime | None:
+            try:
+                return datetime.fromisoformat(t.replace("Z", "+00:00"))
+            except Exception:
+                return None
+
+        start = parse(times[0])
+        end = parse(times[-1])
+        if not start or not end:
+            return None
+
+        sec = (end - start).total_seconds()
+        if sec <= 0:
+            return None
+        return sec / 60.0
+    except Exception:
+        return None
+
+
 def main() -> None:
     idx = json.loads(INDEX.read_text(encoding="utf-8"))
     trips = idx.get("trips", [])
@@ -71,8 +105,6 @@ def main() -> None:
             continue
 
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
-        if meta.get("distanceKm") is not None:
-            continue
 
         gpx_name = meta.get("gpx")
         if not gpx_name:
@@ -82,11 +114,29 @@ def main() -> None:
         if not gpx_path.exists():
             continue
 
-        km = round(gpx_distance_km(gpx_path), 2)
-        meta["distanceKm"] = km
-        meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        changed += 1
-        print(f"Updated {rel}: distanceKm={km}")
+        did_change = False
+
+        # distance
+        if meta.get("distanceKm") is None:
+            km = round(gpx_distance_km(gpx_path), 2)
+            meta["distanceKm"] = km
+            did_change = True
+
+        # duration
+        if meta.get("durationMin") is None:
+            dur = gpx_duration_minutes(gpx_path)
+            if dur is not None:
+                meta["durationMin"] = int(round(dur))
+                did_change = True
+
+        if did_change:
+            meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            changed += 1
+            print(
+                f"Updated {rel}:"
+                + (f" distanceKm={meta.get('distanceKm')}" if meta.get('distanceKm') is not None else "")
+                + (f" durationMin={meta.get('durationMin')}" if meta.get('durationMin') is not None else "")
+            )
 
     print(f"Done. Updated {changed} trip(s).")
 

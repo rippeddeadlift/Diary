@@ -9,6 +9,7 @@ export type TripMeta = {
   date: string 
   tags?: string[]
   distanceKm?: number
+  durationMin?: number
   gpx?: string // filename (relative to trip folder)
   notes?: string // filename (relative to trip folder)
 }
