@@ -29,13 +29,13 @@ export function TripView({
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   return (
-    <div style={{ display: 'grid', gap: 12 }}>
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+    <div className="grid gap-3">
+      <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" size="sm" onClick={onBack}>
           ← zurück
         </Button>
-        <h2 style={{ margin: 0, flex: 1 }}>{trip.meta.title}</h2>
-        <span style={{ opacity: 0.7 }}>{formatDateEU(trip.meta.date)}</span>
+
+        <h2 className="min-w-0 flex-1 truncate text-lg font-semibold">{trip.meta.title}</h2>
 
         <AlertDialog>
           <AlertDialogTrigger asChild>
@@ -72,13 +72,13 @@ export function TripView({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <div className="w-full text-sm text-muted-foreground sm:w-auto">{formatDateEU(trip.meta.date)}</div>
       </div>
 
-      {err ? (
-        <div style={{ color: 'var(--destructive)', fontSize: 14, whiteSpace: 'pre-wrap' }}>{err}</div>
-      ) : null}
+      {err ? <div className="text-sm text-destructive whitespace-pre-wrap">{err}</div> : null}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
+      <div className="grid grid-cols-1 gap-3">
         <GpxMap trip={trip} />
         <Notes trip={trip} />
       </div>
