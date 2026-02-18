@@ -16,3 +16,6 @@ data/photos/_thumbs/
 
 # Trips trash (deleted trips)
 data/trips/_trash/
+
+# GPX import archive
+/data/import/gpx/_done/
