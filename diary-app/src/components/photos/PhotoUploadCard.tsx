@@ -13,9 +13,13 @@ export function PhotoUploadCard({ onUploaded }: { onUploaded: () => Promise<void
   const [result, setResult] = useState<UploadResult | null>(null)
   const [uploaded, setUploaded] = useState(0)
   const [dupSkipped, setDupSkipped] = useState(0)
-  const [zipFile, setZipFile] = useState<File | null>(null)
 
   const fileCount = useMemo(() => (files ? files.length : 0), [files])
+  const singleZip = useMemo(() => {
+    if (!files || files.length !== 1) return null
+    const f = files[0]
+    return f.name.toLowerCase().endsWith('.zip') ? f : null
+  }, [files])
 
   async function onUpload() {
     if (!files || files.length === 0) return
@@ -27,6 +31,16 @@ export function PhotoUploadCard({ onUploaded }: { onUploaded: () => Promise<void
     setDupSkipped(0)
 
     try {
+      // ZIP mode (exactly one .zip selected)
+      if (singleZip) {
+        const json = await uploadZip(singleZip)
+        setResult(json)
+        setFiles(null)
+        await onUploaded()
+        return
+      }
+
+      // image mode
       const all = Array.from(files)
       const batches = chunkArray(all, 25)
 
@@ -55,26 +69,6 @@ export function PhotoUploadCard({ onUploaded }: { onUploaded: () => Promise<void
     }
   }
 
-  async function onUploadZip() {
-    if (!zipFile) return
-    setBusy(true)
-    setErr(null)
-    setResult(null)
-    setUploaded(0)
-    setDupSkipped(0)
-
-    try {
-      const json = await uploadZip(zipFile)
-      setResult(json)
-      setZipFile(null)
-      await onUploaded()
-    } catch (e: any) {
-      setErr(e?.message ?? String(e))
-    } finally {
-      setBusy(false)
-    }
-  }
-
   return (
     <Card>
       <CardHeader>
@@ -82,34 +76,24 @@ export function PhotoUploadCard({ onUploaded }: { onUploaded: () => Promise<void
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          Upload landet in <code>data/photos/inbox/YYYY-MM-DD_HHMM/</code>. Für jedes Bild wird automatisch ein{' '}
-          <code>.json</code> Sidecar angelegt.
+          Upload landet in <code>data/photos/inbox/YYYY-MM-DD_HHMM/</code>. Für jedes Bild wird automatisch ein <code>.json</code>{' '}
+          Sidecar angelegt.
         </p>
 
-        <input type="file" accept="image/*" multiple onChange={(e) => setFiles(e.target.files)} />
+        <input
+          type="file"
+          accept="image/*,.zip,application/zip"
+          multiple
+          onChange={(e) => setFiles(e.target.files)}
+        />
 
         <div className="flex flex-wrap items-center gap-2">
           <Button onClick={onUpload} disabled={busy || fileCount === 0}>
-            {busy ? 'Upload…' : `Upload (${fileCount})`}
+            {busy ? 'Upload…' : singleZip ? 'ZIP importieren' : `Upload (${fileCount})`}
           </Button>
         </div>
 
         {busy ? <UploadProgress done={uploaded} total={fileCount} duplicates={dupSkipped} /> : null}
-
-        <div className="mt-3 space-y-2">
-          <div className="text-xs text-muted-foreground">Oder ZIP hochladen (jpg/jpeg/png/webp)</div>
-          <input
-            type="file"
-            accept=".zip,application/zip"
-            onChange={(e) => setZipFile(e.target.files?.[0] ?? null)}
-            disabled={busy}
-          />
-          <div>
-            <Button onClick={onUploadZip} disabled={busy || !zipFile} variant="secondary">
-              {busy ? 'Upload…' : 'ZIP hochladen'}
-            </Button>
-          </div>
-        </div>
 
         {err ? <div className="text-sm text-destructive">{err}</div> : null}
 
@@ -121,6 +105,12 @@ export function PhotoUploadCard({ onUploaded }: { onUploaded: () => Promise<void
             <div>Anzahl: {result.count}</div>
             {typeof (result as any).duplicatesSkipped === 'number' && (result as any).duplicatesSkipped > 0 ? (
               <div className="mt-1 text-xs text-muted-foreground">Duplikate übersprungen: {(result as any).duplicatesSkipped}</div>
+            ) : null}
+            {typeof (result as any).skippedNonImages === 'number' && (result as any).skippedNonImages > 0 ? (
+              <div className="mt-1 text-xs text-muted-foreground">Nicht-Bilder übersprungen: {(result as any).skippedNonImages}</div>
+            ) : null}
+            {Array.isArray((result as any).errors) && (result as any).errors.length ? (
+              <div className="mt-1 text-xs text-muted-foreground">Fehler: {(result as any).errors.length}</div>
             ) : null}
           </div>
         ) : null}
