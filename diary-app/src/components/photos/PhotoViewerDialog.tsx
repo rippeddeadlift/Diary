@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { GalleryItem } from '@/types/photos'
-import { formatDateTimeEU } from '@/lib/format'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { PhotoPointMap } from '@/components/maps/PhotoPointMap'
 import { PEOPLE, TAGS } from '@/data/tagConfig'

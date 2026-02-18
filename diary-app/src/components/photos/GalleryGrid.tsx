@@ -50,7 +50,7 @@ export function GalleryGrid({
             </div>
 
             <div className="flex items-center justify-between gap-2 p-2 text-xs text-muted-foreground">
-              {it.tags?.length || it.people?.length ? null : <span>ungetaggt</span>}
+              {it.tags?.length || it.people?.length ? null : <span>0 tags</span>}
               {it.createdAt ? <span className="font-mono">{formatDateTimeEU(it.createdAt)}</span> : null}
             </div>
           </button>
