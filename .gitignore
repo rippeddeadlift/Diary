@@ -13,3 +13,6 @@ server/.venv/
 data/photos/
 # Thumbnails cache (generated)
 data/photos/_thumbs/
+
+# Trips trash (deleted trips)
+data/trips/_trash/

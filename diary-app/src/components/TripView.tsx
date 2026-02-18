@@ -72,17 +72,19 @@ export function TripView({
         </AlertDialog>
       </div>
 
-      <div className="flex flex-col items-center text-center">
-        <h2 className="max-w-full truncate text-lg font-semibold">
-          {trip.meta.title}
-          <span className="ml-2 text-sm font-normal text-muted-foreground">
-            {typeof trip.meta.distanceKm === 'number' ? ` · ${trip.meta.distanceKm.toFixed(1)} km` : ''}
-            {typeof trip.meta.durationMin === 'number' ? ` · ⏱ ${trip.meta.durationMin} min` : ''}
-            {typeof trip.meta.avgKmh === 'number' ? ` · Ø ${trip.meta.avgKmh.toFixed(1)} km/h` : ''}
-            {typeof trip.meta.maxKmh === 'number' ? ` · max ${trip.meta.maxKmh.toFixed(1)} km/h` : ''}
-            {` · ${formatDateEU(trip.meta.date)}`}
-          </span>
-        </h2>
+      <div className="grid grid-cols-[1fr] gap-1 sm:grid-cols-[1fr_auto_1fr] sm:items-baseline">
+        <div className="min-w-0">
+          <h2 className="truncate text-lg font-semibold">{trip.meta.title}</h2>
+        </div>
+
+        <div className="text-sm text-muted-foreground sm:text-center">
+          {typeof trip.meta.distanceKm === 'number' ? <span>{trip.meta.distanceKm.toFixed(1)} km</span> : null}
+          {typeof trip.meta.durationMin === 'number' ? <span> · ⏱ {trip.meta.durationMin} min</span> : null}
+          {typeof trip.meta.avgKmh === 'number' ? <span> · Ø {trip.meta.avgKmh.toFixed(1)} km/h</span> : null}
+          {typeof trip.meta.maxKmh === 'number' ? <span> · max {trip.meta.maxKmh.toFixed(1)} km/h</span> : null}
+        </div>
+
+        <div className="text-sm text-muted-foreground sm:text-right">{formatDateEU(trip.meta.date)}</div>
       </div>
 
       {err ? <div className="text-sm text-destructive whitespace-pre-wrap">{err}</div> : null}
