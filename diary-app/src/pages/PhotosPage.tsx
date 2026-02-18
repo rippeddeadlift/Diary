@@ -182,7 +182,7 @@ export function PhotosPage() {
                   entries[nameFromPath(it.path)] = buf
                 }
                 const zipped = zipSync(entries, { level: 0 })
-                const blob = new Blob([zipped], { type: 'application/zip' })
+                const blob = new Blob([zipped.slice().buffer], { type: 'application/zip' })
                 const objUrl = URL.createObjectURL(blob)
                 const a = document.createElement('a')
                 a.href = objUrl
