@@ -26,8 +26,8 @@ from pathlib import Path
 from typing import Optional
 import xml.etree.ElementTree as ET
 
-# Optional: auto-fill distanceKm after import
-from tools.update_trip_meta_from_gpx import gpx_distance_km
+# Optional: auto-fill computed fields after import
+from tools.update_trip_meta_from_gpx import gpx_distance_km, gpx_duration_minutes, gpx_preview
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data"
@@ -206,12 +206,23 @@ def main() -> int:
                 shutil.copy2(str(gpx), str(dst_gpx))
 
             # meta.json
-            # Compute distance (best-effort)
+            # Compute distance/duration/preview (best-effort)
             distance_km = None
+            duration_min = None
+            preview = None
             try:
                 distance_km = round(gpx_distance_km(dst_gpx), 2)
             except Exception:
                 distance_km = None
+            try:
+                dur = gpx_duration_minutes(dst_gpx)
+                duration_min = int(round(dur)) if dur is not None else None
+            except Exception:
+                duration_min = None
+            try:
+                preview = gpx_preview(dst_gpx)
+            except Exception:
+                preview = None
 
             meta = {
                 "id": trip_id,
@@ -222,6 +233,10 @@ def main() -> int:
             }
             if distance_km is not None:
                 meta["distanceKm"] = distance_km
+            if duration_min is not None:
+                meta["durationMin"] = duration_min
+            if preview is not None:
+                meta["preview"] = preview
             meta_path = trip_path / "meta.json"
             if not dry:
                 meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
