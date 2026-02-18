@@ -63,6 +63,65 @@ def gpx_distance_km(path: Path) -> float:
     return dist / 1000.0
 
 
+def gpx_max_kmh(path: Path) -> float | None:
+    """Max segment speed in km/h based on consecutive trkpt time+distance.
+
+    Defensive filtering to avoid GPS spikes:
+    - require both points to have time
+    - ignore dt <= 0
+    - ignore very short dt (< 2s)
+    - cap to 120 km/h (anything above is treated as spike)
+    """
+
+    try:
+        root = ET.parse(path).getroot()
+        pts: list[tuple[float, float, str | None]] = []
+        for trkpt in root.findall(".//g:trkpt", NS):
+            try:
+                lat = float(trkpt.attrib["lat"])
+                lon = float(trkpt.attrib["lon"])
+            except Exception:
+                continue
+            t_el = trkpt.find("g:time", NS)
+            t = t_el.text.strip() if (t_el is not None and t_el.text) else None
+            pts.append((lat, lon, t))
+
+        if len(pts) < 2:
+            return None
+
+        from datetime import datetime
+
+        def parse(t: str | None) -> datetime | None:
+            if not t:
+                return None
+            try:
+                return datetime.fromisoformat(t.replace("Z", "+00:00"))
+            except Exception:
+                return None
+
+        max_kmh: float | None = None
+        for (lat1, lon1, t1), (lat2, lon2, t2) in zip(pts, pts[1:]):
+            d1 = parse(t1)
+            d2 = parse(t2)
+            if not d1 or not d2:
+                continue
+            dt = (d2 - d1).total_seconds()
+            if dt < 2:
+                continue
+            meters = haversine_m(lat1, lon1, lat2, lon2)
+            kmh = (meters / dt) * 3.6
+            if kmh <= 0:
+                continue
+            if kmh > 120:
+                continue
+            if max_kmh is None or kmh > max_kmh:
+                max_kmh = kmh
+
+        return max_kmh
+    except Exception:
+        return None
+
+
 def gpx_preview(path: Path, *, max_points: int = 200) -> dict | None:
     pts = gpx_points_latlon(path)
     if len(pts) < 2:
@@ -157,7 +216,7 @@ def main() -> None:
                 did_change = True
 
         # avg speed (km/h)
-        if meta.get("avgKmh") is None:
+        if "avgKmh" not in meta:
             try:
                 km = meta.get("distanceKm")
                 mins = meta.get("durationMin")
@@ -167,8 +226,17 @@ def main() -> None:
             except Exception:
                 pass
 
+        # max speed (km/h)
+        if "maxKmh" not in meta:
+            mk = gpx_max_kmh(gpx_path)
+            if mk is not None:
+                meta["maxKmh"] = round(float(mk), 1)
+            else:
+                meta["maxKmh"] = None
+            did_change = True
+
         # preview polyline
-        if meta.get("preview") is None:
+        if "preview" not in meta:
             prev = gpx_preview(gpx_path)
             if prev is not None:
                 meta["preview"] = prev
