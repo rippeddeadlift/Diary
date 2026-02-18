@@ -13,6 +13,8 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .config import DATA_DIR, PHOTOS_INBOX_DIR, ROOT
+
+TRASH_DIR = DATA_DIR / "photos" / "_trash"
 from .models import (
     GalleryItem,
     GalleryListResponse,
@@ -22,6 +24,8 @@ from .models import (
     SidecarUpdateResponse,
     SidecarBulkUpdateRequest,
     SidecarBulkUpdateResponse,
+    TrashPhotosRequest,
+    TrashPhotosResponse,
     UploadResponse,
     UploadSavedItem,
 )
@@ -189,6 +193,81 @@ def bulk_update_sidecars(req: SidecarBulkUpdateRequest):
         updated += 1
 
     return SidecarBulkUpdateResponse(updated=updated)
+
+
+@app.post("/api/photos/trash", response_model=TrashPhotosResponse)
+def trash_photos(req: TrashPhotosRequest):
+    dt = datetime.now().astimezone()
+    batch = dt.strftime("%Y-%m-%d_%H%M%S")
+    trash_batch_dir = TRASH_DIR / batch
+    trash_batch_dir.mkdir(parents=True, exist_ok=True)
+
+    sha_idx = load_sha256_index()
+
+    trashed = 0
+    for rel in req.paths:
+        try:
+            img = resolve_data_path(rel)
+        except Exception:
+            continue
+        if not img.exists():
+            continue
+
+        # Only allow trashing from inbox
+        try:
+            img.relative_to(PHOTOS_INBOX_DIR)
+        except Exception:
+            continue
+
+        sc_path = sidecar_path_for(img)
+        sc = load_or_init_sidecar_for_image(img) if sc_path.exists() else {}
+
+        h = None
+        try:
+            h = sc.get("sha256") or sha256_file(img)
+        except Exception:
+            h = None
+
+        # Move image
+        dst_img = trash_batch_dir / img.name
+        if dst_img.exists():
+            dst_img = trash_batch_dir / f"{img.stem}_{int(img.stat().st_mtime)}{img.suffix}"
+        try:
+            dst_img.parent.mkdir(parents=True, exist_ok=True)
+            img.rename(dst_img)
+        except Exception:
+            # fallback to shutil
+            try:
+                import shutil
+
+                shutil.move(str(img), str(dst_img))
+            except Exception:
+                continue
+
+        # Move sidecar if present
+        if sc_path.exists():
+            dst_sc = dst_img.with_suffix(dst_img.suffix + ".json")
+            try:
+                sc_path.rename(dst_sc)
+            except Exception:
+                try:
+                    import shutil
+
+                    shutil.move(str(sc_path), str(dst_sc))
+                except Exception:
+                    pass
+
+        if h and h in sha_idx:
+            sha_idx.pop(h, None)
+
+        trashed += 1
+
+    try:
+        save_sha256_index(sha_idx)
+    except Exception:
+        pass
+
+    return TrashPhotosResponse(trashed=trashed, batch=str(trash_batch_dir.relative_to(DATA_DIR)).replace("\\", "/"))
 
 
 @app.post("/api/trips/import-gpx")

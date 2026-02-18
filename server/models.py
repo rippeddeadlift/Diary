@@ -94,3 +94,13 @@ class SidecarBulkUpdateRequest(BaseModel):
 class SidecarBulkUpdateResponse(BaseModel):
     ok: bool = True
     updated: int
+
+
+class TrashPhotosRequest(BaseModel):
+    paths: list[str]
+
+
+class TrashPhotosResponse(BaseModel):
+    ok: bool = True
+    trashed: int
+    batch: str

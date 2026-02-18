@@ -123,6 +123,26 @@ export function PhotosPage() {
             count={selectedPaths.size}
             onSelectAll={() => selectAllFiltered(filtered)}
             onClear={clearSelected}
+            onTrash={async () => {
+              const paths = Array.from(selectedPaths)
+              if (paths.length === 0) return
+              if (!confirm(`${paths.length} Foto(s) in den Papierkorb verschieben?`)) return
+
+              const res = await fetch('/api/photos/trash', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ paths })
+              })
+              if (!res.ok) {
+                const text = await res.text()
+                alert(`${res.status} ${res.statusText}: ${text}`)
+                return
+              }
+
+              clearSelected()
+              setBulkOpen(false)
+              await loadGallery()
+            }}
             onOpenTags={() => setBulkOpen(true)}
             onDone={() => {
               clearSelected()
