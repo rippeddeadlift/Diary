@@ -62,7 +62,7 @@ export function ToursPage({ trips, onReload }: { trips: Trip[]; onReload: () => 
           {showAll ? 'Alle Aktivitäten' : `Touren (≥ ${MIN_DURATION_MIN} min, cycling ≥ ${MIN_DIST_KM.cycling} km, running ≥ ${MIN_DIST_KM.running} km, hiking ≥ ${MIN_DIST_KM.hiking} km)`}
         </div>
         <label className="flex items-center gap-2 text-sm">
-          <span>Kurz anzeigen</span>
+          <span>Alle anzeigen</span>
           <Switch checked={showAll} onCheckedChange={setShowAll} />
         </label>
       </div>
