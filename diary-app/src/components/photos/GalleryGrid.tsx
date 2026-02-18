@@ -1,4 +1,4 @@
-import { useVirtualizer } from '@tanstack/react-virtual'
+import { useWindowVirtualizer } from '@tanstack/react-virtual'
 
 import type { GalleryItem } from '@/types/photos'
 import { formatDateTimeEU } from '@/lib/format'
@@ -21,9 +21,8 @@ export function GalleryGrid({
 
   const rowCount = Math.ceil(items.length / cols)
 
-  const rowVirtualizer = useVirtualizer({
+  const rowVirtualizer = useWindowVirtualizer({
     count: rowCount,
-    getScrollElement: () => window,
     estimateSize: () => 280,
     overscan: 6
   })
