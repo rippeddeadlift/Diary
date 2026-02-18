@@ -18,6 +18,7 @@ from .config import DATA_DIR, PHOTOS_INBOX_DIR, ROOT
 
 TRASH_DIR = DATA_DIR / "photos" / "_trash"
 THUMBS_DIR = DATA_DIR / "photos" / "_thumbs"
+THUMBS_TRASH_DIR = THUMBS_DIR / "_trash"
 
 
 def thumb_path_for(rel_under_data: str) -> Path:
@@ -298,6 +299,22 @@ def trash_photos(req: TrashPhotosRequest):
                     shutil.move(str(sc_path), str(dst_sc))
                 except Exception:
                     pass
+
+        # Move thumbnail if present (keep restore possible)
+        try:
+            rel_under_data = img.relative_to(DATA_DIR).as_posix()
+            thumb_abs = thumb_path_for(rel_under_data)
+            if thumb_abs.exists():
+                thumb_dst = (THUMBS_TRASH_DIR / batch / rel_under_data).resolve()
+                thumb_dst.parent.mkdir(parents=True, exist_ok=True)
+                try:
+                    thumb_abs.rename(thumb_dst)
+                except Exception:
+                    import shutil
+
+                    shutil.move(str(thumb_abs), str(thumb_dst))
+        except Exception:
+            pass
 
         if h and h in sha_idx:
             sha_idx.pop(h, None)
