@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge'
 import { formatDateEU } from "@/lib/date"
 
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { RoutePreview } from '@/components/trips/RoutePreview'
 
 function formatDurationMin(min: number): string {
   if (!Number.isFinite(min) || min <= 0) return ''
@@ -20,6 +21,9 @@ export function TripList({ trips, onOpen }: { trips: Trip[]; onOpen: (t: Trip) =
       {trips.map((t) => (
           <Card key={t.id} onClick={() => onOpen(t)} className="cursor-pointer text-left transition hover:bg-muted/30 hover:shadow-sm">
             <CardHeader>
+              {t.meta.preview?.points?.length ? (
+                <RoutePreview points={t.meta.preview.points} bbox={t.meta.preview.bbox} className="mb-3" />
+              ) : null}
               <CardTitle className="text-base">{t.meta.title}</CardTitle>
               <CardDescription className="flex flex-wrap items-center gap-2">
                 <span>{formatDateEU(t.meta.date)}</span>

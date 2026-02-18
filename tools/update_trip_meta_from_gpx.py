@@ -37,13 +37,21 @@ def haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return 2 * R * math.asin(math.sqrt(a))
 
 
-def gpx_distance_km(path: Path) -> float:
+def gpx_points_latlon(path: Path) -> list[tuple[float, float]]:
     root = ET.parse(path).getroot()
-    pts = []
+    pts: list[tuple[float, float]] = []
     for trkpt in root.findall(".//g:trkpt", NS):
-        lat = float(trkpt.attrib["lat"])
-        lon = float(trkpt.attrib["lon"])
-        pts.append((lat, lon))
+        try:
+            lat = float(trkpt.attrib["lat"])
+            lon = float(trkpt.attrib["lon"])
+            pts.append((lat, lon))
+        except Exception:
+            continue
+    return pts
+
+
+def gpx_distance_km(path: Path) -> float:
+    pts = gpx_points_latlon(path)
 
     if len(pts) < 2:
         return 0.0
@@ -53,6 +61,25 @@ def gpx_distance_km(path: Path) -> float:
         dist += haversine_m(a, b, c, d)
 
     return dist / 1000.0
+
+
+def gpx_preview(path: Path, *, max_points: int = 200) -> dict | None:
+    pts = gpx_points_latlon(path)
+    if len(pts) < 2:
+        return None
+
+    # sample evenly down to max_points
+    if len(pts) > max_points:
+        step = max(1, len(pts) // max_points)
+        pts = pts[::step]
+        if len(pts) > max_points:
+            pts = pts[:max_points]
+
+    lats = [p[0] for p in pts]
+    lons = [p[1] for p in pts]
+    bbox = [min(lats), min(lons), max(lats), max(lons)]
+
+    return {"bbox": bbox, "points": [[a, b] for (a, b) in pts]}
 
 
 def gpx_duration_minutes(path: Path) -> float | None:
@@ -127,6 +154,13 @@ def main() -> None:
             dur = gpx_duration_minutes(gpx_path)
             if dur is not None:
                 meta["durationMin"] = int(round(dur))
+                did_change = True
+
+        # preview polyline
+        if meta.get("preview") is None:
+            prev = gpx_preview(gpx_path)
+            if prev is not None:
+                meta["preview"] = prev
                 did_change = True
 
         if did_change:
