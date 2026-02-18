@@ -4,11 +4,12 @@ import { formatDateEU } from "@/lib/date"
 
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
-function inferTypeLabel(tags: string[] | undefined, title: string | undefined): string | null {
-  const t = `${(title || '').toLowerCase()} ${(tags || []).join(' ').toLowerCase()}`
-  if (/(cycling|bike|bicycle|rad|fahrrad|radtour|gravel|rennrad)/.test(t)) return 'Rad'
-  if (/(hiking|hike|wandern|wanderung|spaziergang)/.test(t)) return 'Wandern'
-  return null
+function formatDurationMin(min: number): string {
+  if (!Number.isFinite(min) || min <= 0) return ''
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  if (h <= 0) return `${m} min`
+  return `${h}:${String(m).padStart(2, '0')} h`
 }
 
 export function TripList({ trips, onOpen }: { trips: Trip[]; onOpen: (t: Trip) => void }) {
@@ -21,12 +22,11 @@ export function TripList({ trips, onOpen }: { trips: Trip[]; onOpen: (t: Trip) =
             <CardHeader>
               <CardTitle className="text-base">{t.meta.title}</CardTitle>
               <CardDescription className="flex flex-wrap items-center gap-2">
-                {inferTypeLabel(t.meta.tags, t.meta.title) ? (
-                  <Badge variant="outline">{inferTypeLabel(t.meta.tags, t.meta.title)}</Badge>
-                ) : null}
                 <span>{formatDateEU(t.meta.date)}</span>
                 {typeof t.meta.distanceKm === 'number' ? <Badge variant="secondary">{t.meta.distanceKm.toFixed(1)} km</Badge> : null}
-                {t.meta.gpx ? <Badge variant="outline">GPX</Badge> : null}
+                {typeof t.meta.durationMin === 'number' ? (
+                  <Badge variant="outline">⏱ {formatDurationMin(t.meta.durationMin)}</Badge>
+                ) : null}
               </CardDescription>
 
               {t.meta.tags?.length ? (
