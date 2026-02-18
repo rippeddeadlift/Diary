@@ -1,8 +1,44 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useWindowVirtualizer } from '@tanstack/react-virtual'
 
 import type { GalleryItem } from '@/types/photos'
 import { formatDateTimeEU } from '@/lib/format'
 import { useGalleryColumns } from '@/hooks/useGalleryColumns'
+
+function LazyThumb({ url, alt }: { url: string; alt: string }) {
+  const ref = useRef<HTMLDivElement | null>(null)
+  const [show, setShow] = useState(false)
+
+  useEffect(() => {
+    if (show) return
+    const el = ref.current
+    if (!el) return
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            setShow(true)
+            obs.disconnect()
+            break
+          }
+        }
+      },
+      { root: null, rootMargin: '600px' }
+    )
+
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [show])
+
+  return (
+    <div ref={ref} className="block aspect-square w-full bg-muted">
+      {show ? (
+        <img src={url} alt={alt} loading="lazy" decoding="async" className="block aspect-square w-full object-cover" />
+      ) : null}
+    </div>
+  )
+}
 
 export function GalleryGrid({
   items,
@@ -21,10 +57,17 @@ export function GalleryGrid({
 
   const rowCount = Math.ceil(items.length / cols)
 
+  const estimateRowPx = useMemo(() => {
+    // Rough estimate: tile size is approx viewportWidth/cols, plus caption.
+    const w = Math.max(320, document.documentElement.clientWidth || window.innerWidth || 1024)
+    const tile = w / cols
+    return Math.round(tile + 48)
+  }, [cols])
+
   const rowVirtualizer = useWindowVirtualizer({
     count: rowCount,
-    estimateSize: () => 280,
-    overscan: 6
+    estimateSize: () => estimateRowPx,
+    overscan: 3
   })
 
   const virtualRows = rowVirtualizer.getVirtualItems()
@@ -42,7 +85,6 @@ export function GalleryGrid({
           return (
             <div
               key={vr.key}
-              ref={rowVirtualizer.measureElement}
               className="absolute left-0 w-full"
               style={{ transform: `translateY(${vr.start}px)` }}
             >
@@ -57,7 +99,7 @@ export function GalleryGrid({
                       className="group transition-transform duration-200 ease-out transform-gpu hover:scale-105 text-left"
                     >
                       <div className="relative">
-                        <img src={it.url} alt={it.path} loading="lazy" className="block aspect-square w-full object-cover" />
+                        <LazyThumb url={it.url} alt={it.path} />
 
                         {/* selection toggle (visible on hover, always visible in selection mode) */}
                         <button
