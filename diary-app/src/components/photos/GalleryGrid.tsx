@@ -1,4 +1,3 @@
-import { useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 
 import type { GalleryItem } from '@/types/photos'
@@ -19,13 +18,12 @@ export function GalleryGrid({
   onToggleSelect: (it: GalleryItem) => void
 }) {
   const cols = useGalleryColumns()
-  const parentRef = useRef<HTMLDivElement | null>(null)
 
   const rowCount = Math.ceil(items.length / cols)
 
   const rowVirtualizer = useVirtualizer({
     count: rowCount,
-    getScrollElement: () => parentRef.current,
+    getScrollElement: () => window,
     estimateSize: () => 280,
     overscan: 6
   })
@@ -33,12 +31,11 @@ export function GalleryGrid({
   const virtualRows = rowVirtualizer.getVirtualItems()
 
   return (
-    <div ref={parentRef} className="max-h-[70vh] overflow-auto pr-1">
-      <div
-        className="relative w-full"
-        style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
-      >
-        {virtualRows.map((vr) => {
+    <div
+      className="relative w-full"
+      style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
+    >
+      {virtualRows.map((vr) => {
           const rowIndex = vr.index
           const start = rowIndex * cols
           const rowItems = items.slice(start, start + cols)
@@ -94,8 +91,7 @@ export function GalleryGrid({
               </div>
             </div>
           )
-        })}
-      </div>
+      })}
     </div>
   )
 }
