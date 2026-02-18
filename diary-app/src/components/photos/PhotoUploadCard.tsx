@@ -70,6 +70,9 @@ export function PhotoUploadCard({ onUploaded }: { onUploaded: () => Promise<void
               Gespeichert: <code>{result.batch}</code>
             </div>
             <div>Anzahl: {result.count}</div>
+            {typeof (result as any).duplicatesSkipped === 'number' && (result as any).duplicatesSkipped > 0 ? (
+              <div className="mt-1 text-xs text-muted-foreground">Duplikate übersprungen: {(result as any).duplicatesSkipped}</div>
+            ) : null}
           </div>
         ) : null}
       </CardContent>

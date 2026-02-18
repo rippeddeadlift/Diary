@@ -44,6 +44,7 @@ class UploadResponse(BaseModel):
     batch: str
     count: int
     saved: list[UploadSavedItem]
+    duplicatesSkipped: int = 0
 
 
 class SidecarModel(BaseModel):

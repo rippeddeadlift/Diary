@@ -229,6 +229,7 @@ async def upload_photos(files: List[UploadFile] = File(...)):
     sha_idx = load_sha256_index()
 
     saved: list[UploadSavedItem] = []
+    duplicates_skipped = 0
     for f in files:
         out_name = unique_filename(prefix, f.filename or "upload")
         out_path = batch_dir / out_name
@@ -256,6 +257,7 @@ async def upload_photos(files: List[UploadFile] = File(...)):
                     out_path.unlink(missing_ok=True)
                 except Exception:
                     pass
+                duplicates_skipped += 1
                 continue
             else:
                 # stale index entry, treat as new
@@ -290,4 +292,5 @@ async def upload_photos(files: List[UploadFile] = File(...)):
         batch=str(batch_dir.relative_to(ROOT)).replace("\\", "/"),
         count=len(saved),
         saved=saved,
+        duplicatesSkipped=duplicates_skipped,
     )
