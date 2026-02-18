@@ -9,7 +9,15 @@ async function fetchJson<T>(url: string): Promise<T> {
 }
 
 export async function loadTrips(): Promise<Trip[]> {
-  const idx = await fetchJson<TripIndex>('/trips/index.json')
+  // If no trips exist yet, index.json might be missing. Treat that as "no trips".
+  let idx: TripIndex
+  try {
+    idx = await fetchJson<TripIndex>('/trips/index.json')
+  } catch (e: any) {
+    const msg = e?.message ?? String(e)
+    if (typeof msg === 'string' && msg.includes('404')) return []
+    throw e
+  }
   const loaded: Trip[] = []
   for (const t of idx.trips) {
     const meta = await fetchJson<TripMeta>(`/trips/${t.path}/meta.json`)
