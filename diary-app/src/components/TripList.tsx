@@ -32,25 +32,41 @@ export function TripList({ trips, onOpen }: { trips: Trip[]; onOpen: (t: Trip) =
                   />
                 ) : null}
 
-                <div className="text-sm text-muted-foreground">{formatDateEU(t.meta.date)}</div>
+                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                  <span>{formatDateEU(t.meta.date)}</span>
+                  {(t.meta.tags || []).includes('cycling') ? (
+                    <Badge variant="default">cycling</Badge>
+                  ) : (t.meta.tags || []).includes('hiking') ? (
+                    <Badge variant="default">hiking</Badge>
+                  ) : null}
+                </div>
 
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                {(t.meta.tags || []).slice(0, 3).map((tag) => (
-                  <Badge key={tag} variant="default">
-                    {tag}
-                  </Badge>
-                ))}
-                {(t.meta.tags?.length || 0) > 3 ? (
-                  <Badge variant="secondary">+{(t.meta.tags?.length || 0) - 3}</Badge>
-                ) : null}
+                  {typeof t.meta.distanceKm === 'number' ? (
+                    <Badge variant="secondary">{t.meta.distanceKm.toFixed(1)} km</Badge>
+                  ) : null}
 
-                {typeof t.meta.distanceKm === 'number' ? (
-                  <Badge variant="secondary">{t.meta.distanceKm.toFixed(1)} km</Badge>
-                ) : null}
+                  {typeof t.meta.durationMin === 'number' ? (
+                    <Badge variant="outline">⏱ {formatDurationMin(t.meta.durationMin)}</Badge>
+                  ) : null}
 
-                {typeof t.meta.durationMin === 'number' ? (
-                  <Badge variant="outline">⏱ {formatDurationMin(t.meta.durationMin)}</Badge>
-                ) : null}
+                  {typeof t.meta.avgKmh === 'number' ? (
+                    <Badge variant="secondary">Ø {t.meta.avgKmh.toFixed(1)} km/h</Badge>
+                  ) : null}
+
+                  {(() => {
+                    const tags = (t.meta.tags || []).filter((x) => x !== 'cycling' && x !== 'hiking')
+                    return tags.length ? (
+                      <>
+                        {tags.slice(0, 2).map((tag) => (
+                          <Badge key={tag} variant="default">
+                            {tag}
+                          </Badge>
+                        ))}
+                        {tags.length > 2 ? <Badge variant="secondary">+{tags.length - 2}</Badge> : null}
+                      </>
+                    ) : null
+                  })()}
                 </div>
               </div>
             </CardHeader>

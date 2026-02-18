@@ -156,6 +156,17 @@ def main() -> None:
                 meta["durationMin"] = int(round(dur))
                 did_change = True
 
+        # avg speed (km/h)
+        if meta.get("avgKmh") is None:
+            try:
+                km = meta.get("distanceKm")
+                mins = meta.get("durationMin")
+                if isinstance(km, (int, float)) and isinstance(mins, (int, float)) and mins > 0:
+                    meta["avgKmh"] = round(float(km) / (float(mins) / 60.0), 1)
+                    did_change = True
+            except Exception:
+                pass
+
         # preview polyline
         if meta.get("preview") is None:
             prev = gpx_preview(gpx_path)

@@ -10,6 +10,7 @@ export type TripMeta = {
   tags?: string[]
   distanceKm?: number
   durationMin?: number
+  avgKmh?: number
   preview?: {
     bbox: [number, number, number, number] // [minLat, minLon, maxLat, maxLon]
     points: [number, number][] // [lat, lon] sampled

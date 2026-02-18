@@ -235,6 +235,8 @@ def main() -> int:
                 meta["distanceKm"] = distance_km
             if duration_min is not None:
                 meta["durationMin"] = duration_min
+            if distance_km is not None and duration_min is not None and duration_min > 0:
+                meta["avgKmh"] = round(float(distance_km) / (float(duration_min) / 60.0), 1)
             if preview is not None:
                 meta["preview"] = preview
             meta_path = trip_path / "meta.json"
