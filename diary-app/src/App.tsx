@@ -70,36 +70,38 @@ export default function App() {
     )
   }
 
+  const isMenu = page === 'menu'
+
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto max-w-5xl p-6">
-        <header className="mb-6 flex items-center justify-between gap-3">
-          <div className="flex items-baseline gap-3">
-            <h1 className="text-xl font-semibold">Tagebuch</h1>
-            <span className="text-sm text-muted-foreground">{subtitle}</span>
-          </div>
+        <div className={isMenu ? "flex min-h-screen flex-col" : "mx-auto min-h-screen max-w-5xl p-6"}>
+          <header className={isMenu ? "flex items-center justify-between gap-3 px-6 py-4" : "mb-6 flex items-center justify-between gap-3"}>
+            <div className="flex items-baseline gap-3">
+              <h1 className="text-xl font-semibold">Tagebuch</h1>
+              <span className="text-sm text-muted-foreground">{subtitle}</span>
+            </div>
 
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={goMenu}>
-              Home
-            </Button>
-            <ThemeToggle />
-          </div>
-        </header>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={goMenu}>
+                Home
+              </Button>
+              <ThemeToggle />
+            </div>
+          </header>
 
-        {page === 'menu' ? (
-          <MenuPage onTours={goTours} onPhotos={goPhotos} onFitness={goFitness} />
-        ) : page === 'home' ? (
-          <HomePage trips={trips} onOpenTrip={() => setPage('tours')} />
-        ) : page === 'photos' ? (
-          <PhotosPage />
-        ) : page === 'fitness' ? (
-          <FitnessPage />
-        ) : (
-          <ToursPage trips={trips} onReload={reloadTrips} />
-        )}
-      </div>
+          {page === 'menu' ? (
+            <MenuPage onTours={goTours} onPhotos={goPhotos} onFitness={goFitness} />
+          ) : page === 'home' ? (
+            <HomePage trips={trips} onOpenTrip={() => setPage('tours')} />
+          ) : page === 'photos' ? (
+            <PhotosPage />
+          ) : page === 'fitness' ? (
+            <FitnessPage />
+          ) : (
+            <ToursPage trips={trips} onReload={reloadTrips} />
+          )}
+        </div>
       </div>
     </ErrorBoundary>
   )

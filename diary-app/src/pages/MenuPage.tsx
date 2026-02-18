@@ -1,5 +1,3 @@
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-
 export function MenuPage({
   onTours,
   onPhotos,
@@ -10,23 +8,33 @@ export function MenuPage({
   onFitness: () => void
 }) {
   return (
-    <div className="grid gap-4">
-      <MenuCard title="FOTOS" desc="" onClick={onPhotos} />
-      <MenuCard title="TOUREN" desc="" onClick={onTours} />
-      <MenuCard title="FITNESS" desc="" onClick={onFitness} />
+    <div className="flex flex-1 flex-col items-center justify-center gap-10 py-10 text-center">
+      <MenuItem title="FOTOS" onClick={onPhotos} highlight />
+      <MenuItem title="TOUREN" onClick={onTours} />
+      <MenuItem title="FITNESS" onClick={onFitness} />
     </div>
   )
 }
 
-function MenuCard({ title, desc, onClick }: { title: string; desc: string; onClick: () => void }) {
+function MenuItem({
+  title,
+  onClick,
+  highlight
+}: {
+  title: string
+  onClick: () => void
+  highlight?: boolean
+}) {
   return (
-    <button onClick={onClick} className="text-center">
-      <Card className="border-0 transition-all duration-200 ease-out hover:shadow-md hover:scale-[1.5]  hover:text-yellow-500 cursor-default">
-        <CardHeader className="py-10">
-          <CardTitle className="text-3xl tracking-wide">{title}</CardTitle>
-          <CardDescription className="mx-auto mt-2 max-w-[28ch] text-base">{desc}</CardDescription>
-        </CardHeader>
-      </Card>
+    <button
+      onClick={onClick}
+      className={
+        "w-full max-w-xl select-none px-6 py-6 text-4xl font-semibold tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" +
+        (highlight ? " text-yellow-500" : "") +
+        " hover:text-yellow-500"
+      }
+    >
+      {title}
     </button>
   )
 }
