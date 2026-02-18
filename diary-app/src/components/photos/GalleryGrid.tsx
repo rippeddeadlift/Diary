@@ -1,5 +1,9 @@
+import { useRef } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
+
 import type { GalleryItem } from '@/types/photos'
 import { formatDateTimeEU } from '@/lib/format'
+import { useGalleryColumns } from '@/hooks/useGalleryColumns'
 
 export function GalleryGrid({
   items,
@@ -14,48 +18,84 @@ export function GalleryGrid({
   selected: Set<string>
   onToggleSelect: (it: GalleryItem) => void
 }) {
+  const cols = useGalleryColumns()
+  const parentRef = useRef<HTMLDivElement | null>(null)
+
+  const rowCount = Math.ceil(items.length / cols)
+
+  const rowVirtualizer = useVirtualizer({
+    count: rowCount,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 280,
+    overscan: 6
+  })
+
+  const virtualRows = rowVirtualizer.getVirtualItems()
+
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-      {items.map((it) => {
-        const isSelected = selected.has(it.path)
-        return (
-          <button
-            type="button"
-            key={it.path}
-            onClick={() => (selectionMode ? onToggleSelect(it) : onSelect(it))}
-            className="group transition-transform duration-200 ease-out transform-gpu hover:scale-105 text-left"
-          >
-            <div className="relative">
-              <img src={it.url} alt={it.path} loading="lazy" className="block aspect-square w-full object-cover" />
+    <div ref={parentRef} className="max-h-[70vh] overflow-auto pr-1">
+      <div
+        className="relative w-full"
+        style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
+      >
+        {virtualRows.map((vr) => {
+          const rowIndex = vr.index
+          const start = rowIndex * cols
+          const rowItems = items.slice(start, start + cols)
 
-              {/* selection toggle (visible on hover, always visible in selection mode) */}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  onToggleSelect(it)
-                }}
-                className={
-                  "absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full border text-xs transition-opacity " +
-                  (selectionMode ? "opacity-100" : "opacity-0 group-hover:opacity-100") +
-                  " " +
-                  (isSelected ? "bg-primary text-primary-foreground" : "bg-background/70")
-                }
-                aria-label={isSelected ? 'Auswahl entfernen' : 'Auswählen'}
-                title={isSelected ? 'Auswahl entfernen' : 'Auswählen'}
-              >
-                {isSelected ? '✓' : ''}
-              </button>
-            </div>
+          return (
+            <div
+              key={vr.key}
+              ref={rowVirtualizer.measureElement}
+              className="absolute left-0 w-full"
+              style={{ transform: `translateY(${vr.start}px)` }}
+            >
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+                {rowItems.map((it) => {
+                  const isSelected = selected.has(it.path)
+                  return (
+                    <button
+                      type="button"
+                      key={it.path}
+                      onClick={() => (selectionMode ? onToggleSelect(it) : onSelect(it))}
+                      className="group transition-transform duration-200 ease-out transform-gpu hover:scale-105 text-left"
+                    >
+                      <div className="relative">
+                        <img src={it.url} alt={it.path} loading="lazy" className="block aspect-square w-full object-cover" />
 
-            <div className="flex items-center justify-between gap-2 p-2 text-xs text-muted-foreground">
-              {it.tags?.length || it.people?.length ? null : <span>0 tags</span>}
-              {it.createdAt ? <span className="font-mono">{formatDateTimeEU(it.createdAt)}</span> : null}
+                        {/* selection toggle (visible on hover, always visible in selection mode) */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            onToggleSelect(it)
+                          }}
+                          className={
+                            "absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full border text-xs transition-opacity " +
+                            (selectionMode ? "opacity-100" : "opacity-0 group-hover:opacity-100") +
+                            " " +
+                            (isSelected ? "bg-primary text-primary-foreground" : "bg-background/70")
+                          }
+                          aria-label={isSelected ? 'Auswahl entfernen' : 'Auswählen'}
+                          title={isSelected ? 'Auswahl entfernen' : 'Auswählen'}
+                        >
+                          {isSelected ? '✓' : ''}
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 p-2 text-xs text-muted-foreground">
+                        {it.tags?.length || it.people?.length ? null : <span>ungetaggt</span>}
+                        {it.createdAt ? <span className="font-mono">{formatDateTimeEU(it.createdAt)}</span> : null}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-          </button>
-        )
-      })}
+          )
+        })}
+      </div>
     </div>
   )
 }
