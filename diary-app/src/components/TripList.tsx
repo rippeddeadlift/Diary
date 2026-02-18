@@ -21,19 +21,20 @@ export function TripList({ trips, onOpen }: { trips: Trip[]; onOpen: (t: Trip) =
       {trips.map((t) => (
           <Card key={t.id} onClick={() => onOpen(t)} className="cursor-pointer text-left transition hover:bg-muted/30 hover:shadow-sm">
             <CardHeader>
-              <div className="flex items-start justify-between gap-3">
+              <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
                 <CardTitle className="text-base">{t.meta.title}</CardTitle>
+
                 {t.meta.preview?.points?.length ? (
                   <RoutePreview
                     points={t.meta.preview.points}
                     bbox={t.meta.preview.bbox}
-                    className="flex h-20 w-40 items-center justify-center rounded-md bg-background/0"
+                    className="row-span-3 flex h-full w-40 items-center justify-center rounded-md bg-background/0"
                   />
                 ) : null}
-              </div>
-              <div className="mt-1 text-sm text-muted-foreground">{formatDateEU(t.meta.date)}</div>
 
-              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <div className="text-sm text-muted-foreground">{formatDateEU(t.meta.date)}</div>
+
+                <div className="mt-2 flex flex-wrap items-center gap-2">
                 {(t.meta.tags || []).slice(0, 3).map((tag) => (
                   <Badge key={tag} variant="default">
                     {tag}
@@ -50,6 +51,7 @@ export function TripList({ trips, onOpen }: { trips: Trip[]; onOpen: (t: Trip) =
                 {typeof t.meta.durationMin === 'number' ? (
                   <Badge variant="outline">⏱ {formatDurationMin(t.meta.durationMin)}</Badge>
                 ) : null}
+                </div>
               </div>
             </CardHeader>
           </Card>
