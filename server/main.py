@@ -20,6 +20,8 @@ from .models import (
     SidecarModel,
     SidecarUpdateRequest,
     SidecarUpdateResponse,
+    SidecarBulkUpdateRequest,
+    SidecarBulkUpdateResponse,
     UploadResponse,
     UploadSavedItem,
 )
@@ -34,6 +36,7 @@ from .photos_repo import (
     unique_filename,
     sort_gallery_items,
     update_sidecar_fields,
+    bulk_toggle_sidecar_fields,
 )
 
 APP_TITLE = "Diary Upload Server"
@@ -157,6 +160,32 @@ def update_sidecar(req: SidecarUpdateRequest):
         sidecarPath=str(sc_path.relative_to(DATA_DIR)).replace("\\", "/"),
         sidecar=SidecarModel(**sidecar),
     )
+
+
+@app.post("/api/photos/sidecar/bulk", response_model=SidecarBulkUpdateResponse)
+def bulk_update_sidecars(req: SidecarBulkUpdateRequest):
+    updated = 0
+    for rel in req.paths:
+        try:
+            img = resolve_data_path(rel)
+        except Exception:
+            continue
+        if not img.exists():
+            continue
+
+        sc_path = sidecar_path_for(img)
+        sidecar = load_or_init_sidecar_for_image(img)
+        sidecar = bulk_toggle_sidecar_fields(
+            sidecar,
+            add_people=req.addPeople,
+            remove_people=req.removePeople,
+            add_tags=req.addTags,
+            remove_tags=req.removeTags,
+        )
+        save_sidecar(sc_path, sidecar)
+        updated += 1
+
+    return SidecarBulkUpdateResponse(updated=updated)
 
 
 @app.post("/api/trips/import-gpx")

@@ -78,3 +78,16 @@ class SidecarUpdateResponse(BaseModel):
     path: str
     sidecarPath: str
     sidecar: SidecarModel
+
+
+class SidecarBulkUpdateRequest(BaseModel):
+    paths: list[str]
+    addPeople: list[str] = []
+    removePeople: list[str] = []
+    addTags: list[str] = []
+    removeTags: list[str] = []
+
+
+class SidecarBulkUpdateResponse(BaseModel):
+    ok: bool = True
+    updated: int

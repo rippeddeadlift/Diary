@@ -1,23 +1,51 @@
 import type { GalleryItem } from '@/types/photos'
 import { formatDateTimeEU } from '@/lib/format'
 
-export function GalleryGrid({ items, onSelect }: { items: GalleryItem[]; onSelect: (it: GalleryItem) => void }) {
+export function GalleryGrid({
+  items,
+  onSelect,
+  selectionMode,
+  selected,
+  onToggleSelect
+}: {
+  items: GalleryItem[]
+  onSelect: (it: GalleryItem) => void
+  selectionMode: boolean
+  selected: Set<string>
+  onToggleSelect: (it: GalleryItem) => void
+}) {
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-      {items.map((it) => (
-        <button
-          type="button"
-          key={it.path}
-          onClick={() => onSelect(it)}
-          className="transition-transform duration-200 ease-out transform-gpu hover:scale-105 "
-        >
-          <img src={it.url} alt={it.path} loading="lazy" className="block aspect-square w-full object-cover" />
-          <div className="flex items-center justify-between gap-2 p-2 text-xs text-muted-foreground">
-            {it.tags?.length || it.people?.length ? null : <span>ungetaggt</span>}
-            {it.createdAt ? <span className="font-mono">{formatDateTimeEU(it.createdAt)}</span> : null}
-          </div>
-        </button>
-      ))}
+      {items.map((it) => {
+        const isSelected = selected.has(it.path)
+        return (
+          <button
+            type="button"
+            key={it.path}
+            onClick={() => (selectionMode ? onToggleSelect(it) : onSelect(it))}
+            className="transition-transform duration-200 ease-out transform-gpu hover:scale-105 text-left overflow-hidden rounded-lg border bg-muted"
+          >
+            <div className="relative">
+              <img src={it.url} alt={it.path} loading="lazy" className="block aspect-square w-full object-cover" />
+              {selectionMode ? (
+                <div
+                  className={
+                    "absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full border text-xs " +
+                    (isSelected ? "bg-primary text-primary-foreground" : "bg-background/70")
+                  }
+                >
+                  {isSelected ? '✓' : ''}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="flex items-center justify-between gap-2 p-2 text-xs text-muted-foreground">
+              {it.tags?.length || it.people?.length ? null : <span>ungetaggt</span>}
+              {it.createdAt ? <span className="font-mono">{formatDateTimeEU(it.createdAt)}</span> : null}
+            </div>
+          </button>
+        )
+      })}
     </div>
   )
 }

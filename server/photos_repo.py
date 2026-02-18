@@ -71,6 +71,40 @@ def update_sidecar_fields(sc: dict[str, Any], people: list[str], tags: list[str]
     return sc
 
 
+def bulk_toggle_sidecar_fields(
+    sc: dict[str, Any],
+    *,
+    add_people: list[str],
+    remove_people: list[str],
+    add_tags: list[str],
+    remove_tags: list[str],
+) -> dict[str, Any]:
+    sc = ensure_sidecar_fields(sc)
+
+    people = [str(x) for x in (sc.get("people") or []) if x is not None and str(x).strip()]
+    tags = [str(x) for x in (sc.get("tags") or []) if x is not None and str(x).strip()]
+
+    def add_many(base: list[str], xs: list[str]) -> list[str]:
+        out = list(base)
+        for x in xs:
+            if x not in out:
+                out.append(x)
+        return out
+
+    def remove_many(base: list[str], xs: list[str]) -> list[str]:
+        return [x for x in base if x not in xs]
+
+    people = add_many(people, add_people)
+    people = remove_many(people, remove_people)
+
+    tags = add_many(tags, add_tags)
+    tags = remove_many(tags, remove_tags)
+
+    sc["people"] = people
+    sc["tags"] = tags
+    return sc
+
+
 def load_sidecar(path: Path) -> dict[str, Any]:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
