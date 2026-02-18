@@ -142,6 +142,59 @@ export function PhotosPage() {
             count={selectedPaths.size}
             onSelectAll={() => selectAllFiltered(filtered)}
             onClear={clearSelected}
+            onShare={async () => {
+              const paths = Array.from(selectedPaths)
+              if (paths.length === 0) return
+
+              const nameFromPath = (p: string) => p.split('/').pop() || 'photo'
+
+              const MAX_DIRECT = 20
+              const itemsByPath = new Map(filtered.map((it) => [it.path, it] as const))
+              const selectedItems = paths.map((p) => itemsByPath.get(p)).filter(Boolean) as GalleryItem[]
+
+              async function fetchFile(it: GalleryItem) {
+                const res = await fetch(it.url)
+                if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+                const blob = await res.blob()
+                return new File([blob], nameFromPath(it.path), { type: blob.type || 'image/jpeg' })
+              }
+
+              const nav: any = navigator
+
+              if (selectedItems.length <= MAX_DIRECT && nav?.share) {
+                try {
+                  const files: File[] = []
+                  for (const it of selectedItems) files.push(await fetchFile(it))
+                  await nav.share({ files, title: `Fotos (${files.length})` })
+                  return
+                } catch {
+                  // fall through to zip
+                }
+              }
+
+              try {
+                const { zipSync } = await import('fflate')
+                const entries: Record<string, Uint8Array> = {}
+                for (const it of selectedItems) {
+                  const res = await fetch(it.url)
+                  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+                  const buf = new Uint8Array(await res.arrayBuffer())
+                  entries[nameFromPath(it.path)] = buf
+                }
+                const zipped = zipSync(entries, { level: 0 })
+                const blob = new Blob([zipped], { type: 'application/zip' })
+                const objUrl = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = objUrl
+                a.download = `fotos_${new Date().toISOString().slice(0, 10)}.zip`
+                document.body.appendChild(a)
+                a.click()
+                a.remove()
+                window.setTimeout(() => URL.revokeObjectURL(objUrl), 1000)
+              } catch (e: any) {
+                alert(e?.message ?? String(e))
+              }
+            }}
             onTrash={async () => {
               const paths = Array.from(selectedPaths)
               if (paths.length === 0) return

@@ -23,6 +23,7 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "@tanstack/react-virtual": "^3.13.12",
+    "fflate": "^0.8.2",
     "tailwind-merge": "^3.4.1",
     "tailwindcss-animate": "^1.0.7"
   },

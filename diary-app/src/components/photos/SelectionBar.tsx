@@ -15,6 +15,7 @@ export function SelectionBar({
   count,
   onSelectAll,
   onClear,
+  onShare,
   onTrash,
   onOpenTags,
   onDone
@@ -22,6 +23,7 @@ export function SelectionBar({
   count: number
   onSelectAll: () => void
   onClear: () => void
+  onShare: () => Promise<void> | void
   onTrash: () => Promise<void> | void
   onOpenTags: () => void
   onDone: () => void
@@ -40,6 +42,9 @@ export function SelectionBar({
           </Button>
           <Button variant="outline" size="sm" onClick={onClear}>
             Leeren
+          </Button>
+          <Button variant="outline" size="sm" onClick={onShare} disabled={count === 0}>
+            Teilen
           </Button>
           <Button variant="destructive" size="sm" onClick={() => setTrashOpen(true)} disabled={count === 0}>
             Löschen
