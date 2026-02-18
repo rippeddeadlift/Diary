@@ -75,7 +75,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-background text-foreground">
-        <div className={isMenu ? "flex min-h-screen flex-col" : "mx-auto min-h-screen max-w-5xl p-6"}>
+        <div className={isMenu ? "flex min-h-screen flex-col overflow-hidden" : "mx-auto min-h-screen max-w-5xl p-6"}>
           <header className={isMenu ? "flex items-center justify-between gap-3 px-6 py-4" : "mb-6 flex items-center justify-between gap-3"}>
             <div className="flex items-baseline gap-3">
               <h1 className="text-xl font-semibold">Tagebuch</h1>
