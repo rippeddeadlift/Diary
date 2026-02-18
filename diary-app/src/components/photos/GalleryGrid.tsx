@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useWindowVirtualizer } from '@tanstack/react-virtual'
 
 import type { GalleryItem } from '@/types/photos'
@@ -57,16 +57,9 @@ export function GalleryGrid({
 
   const rowCount = Math.ceil(items.length / cols)
 
-  const estimateRowPx = useMemo(() => {
-    // Rough estimate: tile size is approx viewportWidth/cols, plus caption.
-    const w = Math.max(320, document.documentElement.clientWidth || window.innerWidth || 1024)
-    const tile = w / cols
-    return Math.round(tile + 48)
-  }, [cols])
-
   const rowVirtualizer = useWindowVirtualizer({
     count: rowCount,
-    estimateSize: () => estimateRowPx,
+    estimateSize: () => 280,
     overscan: 3
   })
 
