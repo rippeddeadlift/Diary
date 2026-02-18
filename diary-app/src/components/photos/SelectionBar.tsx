@@ -22,13 +22,13 @@ export function SelectionBar({
 
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={onSelectAll}>
-            Alle (gefiltert)
+            Alle
           </Button>
           <Button variant="outline" size="sm" onClick={onClear}>
             Leeren
           </Button>
           <Button variant="default" size="sm" onClick={onOpenTags} disabled={count === 0}>
-            Tags…
+            Tags
           </Button>
           <Button variant="outline" size="sm" onClick={onDone}>
             Fertig
