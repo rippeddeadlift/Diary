@@ -13,6 +13,7 @@ import { SelectionBar } from '@/components/photos/SelectionBar'
 import { useBulkSelection } from '@/hooks/useBulkSelection'
 import { useBulkTagging } from '@/hooks/useBulkTagging'
 import { PEOPLE, TAGS } from '@/data/tagConfig'
+import { trashPhotos } from '@/api/photos'
 
 export function PhotosPage() {
   const { items: gallery, error: galleryErr, reload: loadGallery } = useGallery()
@@ -129,15 +130,11 @@ export function PhotosPage() {
               const paths = Array.from(selectedPaths)
               if (paths.length === 0) return
 
-              const res = await fetch('/api/photos/trash', {
-                method: 'POST',
-                headers: { 'content-type': 'application/json' },
-                body: JSON.stringify({ paths })
-              })
-              if (!res.ok) {
-                const text = await res.text()
+              try {
+                await trashPhotos(paths)
+              } catch (e: any) {
                 // TODO: unify with app-wide toast later
-                alert(`${res.status} ${res.statusText}: ${text}`)
+                alert(e?.message ?? String(e))
                 return
               }
 

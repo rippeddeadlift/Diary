@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { GalleryItem } from '@/types/photos'
+import { bulkUpdate } from '@/api/photos'
 
 export type BulkState = 'off' | 'on' | 'mixed'
 
@@ -46,15 +47,7 @@ export function useBulkTagging({
     setBusy(true)
     setError(null)
     try {
-      const res = await fetch('/api/photos/sidecar/bulk', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ paths, ...patch })
-      })
-      if (!res.ok) {
-        const text = await res.text()
-        throw new Error(`${res.status} ${res.statusText}: ${text}`)
-      }
+      await bulkUpdate({ paths, ...patch })
       await reload()
     } catch (e: any) {
       setError(e?.message ?? String(e))
