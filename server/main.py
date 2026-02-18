@@ -8,6 +8,8 @@ import sys
 from pathlib import Path
 from typing import Any, List
 
+from PIL import Image, ImageOps
+
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -16,6 +18,40 @@ from .config import DATA_DIR, PHOTOS_INBOX_DIR, ROOT
 
 TRASH_DIR = DATA_DIR / "photos" / "_trash"
 THUMBS_DIR = DATA_DIR / "photos" / "_thumbs"
+
+
+def thumb_path_for(rel_under_data: str) -> Path:
+    # rel_under_data like: photos/inbox/.../x.jpg
+    return (THUMBS_DIR / rel_under_data).resolve()
+
+
+def ensure_thumb(img_abs: Path, rel_under_data: str, *, max_size: int = 512) -> None:
+    """Best-effort thumbnail generation. Creates THUMBS_DIR/<rel_under_data>."""
+
+    dst = thumb_path_for(rel_under_data)
+    if dst.exists():
+        return
+
+    # Only generate thumbs for common raster formats.
+    ext = img_abs.suffix.lower()
+    if ext not in {".jpg", ".jpeg", ".png", ".webp"}:
+        return
+
+    dst.parent.mkdir(parents=True, exist_ok=True)
+
+    with Image.open(img_abs) as im:
+        im = ImageOps.exif_transpose(im)
+        if ext in {".jpg", ".jpeg"}:
+            im = im.convert("RGB")
+        im.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+
+        if ext in {".jpg", ".jpeg"}:
+            im.save(dst, format="JPEG", quality=82, optimize=True, progressive=True)
+        elif ext == ".png":
+            im.save(dst, format="PNG", optimize=True)
+        else:  # .webp
+            im = im.convert("RGB")
+            im.save(dst, format="WEBP", quality=82, method=6)
 from .models import (
     GalleryItem,
     GalleryListResponse,
@@ -348,7 +384,14 @@ async def upload_photos(files: List[UploadFile] = File(...)):
                 # stale index entry, treat as new
                 sha_idx.pop(h, None)
 
-        # 3) Sidecar + index update
+        # 3) Thumbnail (best-effort)
+        try:
+            rel_under_data = out_path.relative_to(DATA_DIR).as_posix()
+            ensure_thumb(out_path, rel_under_data)
+        except Exception:
+            pass
+
+        # 4) Sidecar + index update
         sidecar = build_sidecar_for_image(out_path)
         if h:
             sidecar["sha256"] = h
