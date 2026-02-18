@@ -11,3 +11,5 @@ server/.venv/
 
 # Local photo inbox content (optional: keep out of git; decide later)
 data/photos/
+# Thumbnails cache (generated)
+data/photos/_thumbs/
