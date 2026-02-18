@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Trip } from '../../data/trips'
 import { loadTripGpx } from '../../data/trips'
 import { LeafletMap } from './LeafletMap'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 function buildTripStats(trip: Trip): string {
   const parts: string[] = []
@@ -28,13 +29,22 @@ export function GpxMap({ trip }: { trip: Trip }) {
   }, [trip])
 
   if (err) return <div style={{ color: 'crimson' }}>{err}</div>
-  if (!gpxText) {
-    return (
-      <div style={{ border: '1px solid rgba(0,0,0,0.12)', borderRadius: 12, padding: 14, background: 'white' }}>
-        Karte…
-      </div>
-    )
-  }
 
-  return <LeafletMap gpxText={gpxText} stats={buildTripStats(trip)} />
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader className="py-2">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <CardTitle className="text-base">GPX-Route</CardTitle>
+          {gpxText ? <div className="text-xs text-muted-foreground">{buildTripStats(trip)}</div> : null}
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        {gpxText ? (
+          <LeafletMap gpxText={gpxText} />
+        ) : (
+          <div className="p-4 text-sm text-muted-foreground">Karte…</div>
+        )}
+      </CardContent>
+    </Card>
+  )
 }
