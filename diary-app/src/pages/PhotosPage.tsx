@@ -32,14 +32,15 @@ export function PhotosPage() {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [peopleFilter, setPeopleFilter] = useState<string[]>([])
   const [tagFilter, setTagFilter] = useState<string[]>([])
-  const [untaggedOnly, setUntaggedOnly] = useState(false)
+  const [tagState, setTagState] = useState<'all' | 'untagged' | 'tagged'>('all')
 
   const filtered = useMemo(() => {
     return gallery.filter((it) => {
       const people = it.people ?? []
       const tags = it.tags ?? []
 
-      if (untaggedOnly && (people.length > 0 || tags.length > 0)) return false
+      if (tagState === 'untagged' && (people.length > 0 || tags.length > 0)) return false
+      if (tagState === 'tagged' && people.length === 0 && tags.length === 0) return false
 
       // AND semantics: all selected people/tags must be present
       for (const p of peopleFilter) if (!people.includes(p)) return false
@@ -47,7 +48,7 @@ export function PhotosPage() {
 
       return true
     })
-  }, [gallery, peopleFilter, tagFilter, untaggedOnly])
+  }, [gallery, peopleFilter, tagFilter, tagState])
 
   return (
     <div className="space-y-4">
@@ -81,7 +82,7 @@ export function PhotosPage() {
                   onClick={() => {
                     setPeopleFilter([])
                     setTagFilter([])
-                    setUntaggedOnly(false)
+                    setTagState('all')
                   }}
                 >
                   Zurücksetzen
@@ -101,10 +102,16 @@ export function PhotosPage() {
               <div>
                 <button
                   type="button"
-                  onClick={() => setUntaggedOnly((v) => !v)}
+                  onClick={() =>
+                    setTagState((s) => (s === 'all' ? 'untagged' : s === 'untagged' ? 'tagged' : 'all'))
+                  }
                   className="text-sm text-muted-foreground underline"
                 >
-                  {untaggedOnly ? '✓ Nur ungetaggte (an)' : 'Nur ungetaggte'}
+                  {tagState === 'all'
+                    ? 'Alle'
+                    : tagState === 'untagged'
+                      ? '✓ Nur ungetaggte'
+                      : '✓ Nur getaggte'}
                 </button>
               </div>
             </div>
