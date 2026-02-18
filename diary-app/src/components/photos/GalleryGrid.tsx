@@ -23,7 +23,7 @@ export function GalleryGrid({
             type="button"
             key={it.path}
             onClick={() => (selectionMode ? onToggleSelect(it) : onSelect(it))}
-            className="transition-transform duration-200 ease-out transform-gpu hover:scale-105 text-left overflow-hidden rounded-lg border bg-muted"
+            className="transition-transform duration-200 ease-out transform-gpu hover:scale-105 text-left"
           >
             <div className="relative">
               <img src={it.url} alt={it.path} loading="lazy" className="block aspect-square w-full object-cover" />
@@ -40,7 +40,7 @@ export function GalleryGrid({
             </div>
 
             <div className="flex items-center justify-between gap-2 p-2 text-xs text-muted-foreground">
-              {it.tags?.length || it.people?.length ? null : <span>ungetaggt</span>}
+              {it.tags?.length || it.people?.length ? null : <span>0 tags</span>}
               {it.createdAt ? <span className="font-mono">{formatDateTimeEU(it.createdAt)}</span> : null}
             </div>
           </button>
