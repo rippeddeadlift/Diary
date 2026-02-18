@@ -70,7 +70,7 @@ export async function trashPhotos(paths: string[]) {
 
 export async function uploadPhotos(files: FileList | File[]): Promise<UploadResult> {
   const fd = new FormData()
-  for (const f of Array.from(files as any)) fd.append('files', f)
+  for (const f of Array.from(files) ) fd.append('files', f)
 
   const res = await fetch('/api/photos/upload', {
     method: 'POST',
