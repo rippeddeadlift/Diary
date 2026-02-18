@@ -55,7 +55,7 @@ export function RoutePreview({
 
   return (
     <div className={cn('overflow-hidden', className)}>
-      <svg viewBox={`0 0 ${W} ${H}`} className="block h-full w-full">
+      <svg viewBox={`0 0 ${W} ${H}`} className="block h-full w-full" preserveAspectRatio="xMidYMid meet">
         <path
           d={path}
           fill="none"
