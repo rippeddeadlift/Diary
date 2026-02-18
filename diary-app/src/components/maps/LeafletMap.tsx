@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
-export function LeafletMap({ gpxText }: { gpxText: string }) {
+export function LeafletMap({
+  gpxText,
+  stats
+}: {
+  gpxText: string
+  stats?: string
+}) {
   // lazy import leaflet only in browser
   const [ready, setReady] = useState(false)
   const [L, setL] = useState<any>(null)
@@ -57,7 +63,10 @@ export function LeafletMap({ gpxText }: { gpxText: string }) {
   return (
     <Card className="overflow-hidden">
       <CardHeader className="py-2">
-        <CardTitle className="text-base">GPX-Route</CardTitle>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <CardTitle className="text-base">GPX-Route</CardTitle>
+          {stats ? <div className="text-xs text-muted-foreground">{stats}</div> : null}
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         <div ref={mapRef} className="h-[420px] w-full" />

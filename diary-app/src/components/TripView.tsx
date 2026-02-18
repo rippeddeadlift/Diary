@@ -37,12 +37,8 @@ export function TripView({
 
         <div className="min-w-0 flex-1">
           <h2 className="truncate text-lg font-semibold">{trip.meta.title}</h2>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            <span>{formatDateEU(trip.meta.date)}</span>
-            {typeof trip.meta.distanceKm === 'number' ? <span>· {trip.meta.distanceKm.toFixed(1)} km</span> : null}
-            {typeof trip.meta.durationMin === 'number' ? <span>· ⏱ {trip.meta.durationMin} min</span> : null}
-            {typeof trip.meta.avgKmh === 'number' ? <span>· Ø {trip.meta.avgKmh.toFixed(1)} km/h</span> : null}
-            {typeof trip.meta.maxKmh === 'number' ? <span>· max {trip.meta.maxKmh.toFixed(1)} km/h</span> : null}
+          <div className="mt-1 text-sm text-muted-foreground">
+            {formatDateEU(trip.meta.date)}
           </div>
         </div>
 
