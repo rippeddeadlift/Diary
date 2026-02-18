@@ -20,6 +20,10 @@ TRASH_DIR = DATA_DIR / "photos" / "_trash"
 THUMBS_DIR = DATA_DIR / "photos" / "_thumbs"
 THUMBS_TRASH_DIR = THUMBS_DIR / "_trash"
 
+TRIPS_DIR = DATA_DIR / "trips"
+TRIPS_INDEX = TRIPS_DIR / "index.json"
+TRIPS_TRASH_DIR = TRIPS_DIR / "_trash"
+
 
 def thumb_path_for(rel_under_data: str) -> Path:
     # rel_under_data like: photos/inbox/.../x.jpg
@@ -64,6 +68,8 @@ from .models import (
     SidecarBulkUpdateResponse,
     TrashPhotosRequest,
     TrashPhotosResponse,
+    TrashTripsRequest,
+    TrashTripsResponse,
     UploadResponse,
     UploadSavedItem,
 )
@@ -354,6 +360,69 @@ def import_gpx():
         )
 
     return {"ok": True, "imported": imported, "output": out}
+
+
+@app.post("/api/trips/trash", response_model=TrashTripsResponse)
+def trash_trips(req: TrashTripsRequest):
+    dt = datetime.now().astimezone()
+    batch = dt.strftime("%Y-%m-%d_%H%M%S")
+    trash_batch_dir = TRIPS_TRASH_DIR / batch
+    trash_batch_dir.mkdir(parents=True, exist_ok=True)
+
+    if not TRIPS_INDEX.exists():
+        return TrashTripsResponse(trashed=0, batch=str(trash_batch_dir.relative_to(DATA_DIR)).replace("\\", "/"))
+
+    idx = json.loads(TRIPS_INDEX.read_text(encoding="utf-8"))
+    trips = list(idx.get("trips") or [])
+
+    by_id: dict[str, dict[str, Any]] = {}
+    for t in trips:
+        if isinstance(t, dict) and isinstance(t.get("id"), str):
+            by_id[t["id"]] = t
+
+    trashed = 0
+    to_remove: set[str] = set()
+
+    for trip_id in req.ids:
+        t = by_id.get(trip_id)
+        if not t:
+            continue
+        rel = t.get("path")
+        if not isinstance(rel, str) or not rel.strip():
+            continue
+
+        src = (TRIPS_DIR / rel).resolve()
+        # Prevent traversal / ensure under TRIPS_DIR
+        try:
+            src.relative_to(TRIPS_DIR)
+        except Exception:
+            continue
+
+        if not src.exists() or not src.is_dir():
+            # Still remove from index (stale)
+            to_remove.add(trip_id)
+            continue
+
+        dst = (trash_batch_dir / rel).resolve()
+        try:
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            src.rename(dst)
+        except Exception:
+            try:
+                import shutil
+
+                shutil.move(str(src), str(dst))
+            except Exception:
+                continue
+
+        to_remove.add(trip_id)
+        trashed += 1
+
+    if to_remove:
+        idx["trips"] = [t for t in trips if not (isinstance(t, dict) and t.get("id") in to_remove)]
+        TRIPS_INDEX.write_text(json.dumps(idx, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    return TrashTripsResponse(trashed=trashed, batch=str(trash_batch_dir.relative_to(DATA_DIR)).replace("\\", "/"))
 
 
 @app.post("/api/photos/upload", response_model=UploadResponse)

@@ -10,7 +10,16 @@ export function ToursPage({ trips, onReload }: { trips: Trip[]; onReload: () => 
   const [view, setView] = useState<ToursView>({ kind: 'list' })
 
   if (view.kind === 'trip') {
-    return <TripView trip={view.trip} onBack={() => setView({ kind: 'list' })} />
+    return (
+      <TripView
+        trip={view.trip}
+        onBack={() => setView({ kind: 'list' })}
+        onDeleted={async () => {
+          await onReload()
+          setView({ kind: 'list' })
+        }}
+      />
+    )
   }
 
   return (

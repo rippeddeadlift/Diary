@@ -107,3 +107,13 @@ class TrashPhotosResponse(BaseModel):
     ok: bool = True
     trashed: int
     batch: str
+
+
+class TrashTripsRequest(BaseModel):
+    ids: list[str]
+
+
+class TrashTripsResponse(BaseModel):
+    ok: bool = True
+    trashed: int
+    batch: str
