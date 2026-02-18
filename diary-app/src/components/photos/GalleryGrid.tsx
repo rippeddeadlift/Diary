@@ -91,6 +91,7 @@ export function GalleryGrid({
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
                 {rowItems.map((it) => {
                   const isSelected = selected.has(it.path)
+                  const imgUrl = it.thumbExists && it.thumbUrl ? it.thumbUrl : it.url
                   return (
                     <button
                       type="button"
@@ -99,7 +100,7 @@ export function GalleryGrid({
                       className="group transition-transform duration-200 ease-out transform-gpu hover:scale-105 text-left"
                     >
                       <div className="relative">
-                        <LazyThumb url={it.url} alt={it.path} />
+                        <LazyThumb url={imgUrl} alt={it.path} />
 
                         {/* selection toggle (visible on hover, always visible in selection mode) */}
                         <button

@@ -4,6 +4,10 @@ export type GalleryItem = {
   path: string
   url: string
   hasSidecar: boolean
+
+  thumbUrl?: string | null
+  thumbExists?: boolean
+
   people?: string[]
   tags?: string[]
   createdAt?: string | null

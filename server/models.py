@@ -17,6 +17,9 @@ class GalleryItem(BaseModel):
     hasSidecar: bool
     sidecarPath: Optional[str] = None
 
+    thumbUrl: Optional[str] = None
+    thumbExists: bool = False
+
     people: list[str] = []
     tags: list[str] = []
 

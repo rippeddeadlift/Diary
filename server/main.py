@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from .config import DATA_DIR, PHOTOS_INBOX_DIR, ROOT
 
 TRASH_DIR = DATA_DIR / "photos" / "_trash"
+THUMBS_DIR = DATA_DIR / "photos" / "_thumbs"
 from .models import (
     GalleryItem,
     GalleryListResponse,
@@ -68,6 +69,9 @@ def list_inbox_all():
 
     for img in list_inbox_images():
         rel = img.relative_to(DATA_DIR).as_posix()
+        thumb_rel = f"photos/_thumbs/{rel}"
+        thumb_abs = (DATA_DIR / thumb_rel).resolve()
+        thumb_exists = thumb_abs.exists()
         sc_path = sidecar_path_for(img)
         sc = load_or_init_sidecar_for_image(img) if sc_path.exists() else {}
 
@@ -110,6 +114,8 @@ def list_inbox_all():
                     url=f"/files/{rel}",
                     hasSidecar=sc_path.exists(),
                     sidecarPath=sc_path.relative_to(DATA_DIR).as_posix() if sc_path.exists() else None,
+                    thumbUrl=f"/files/{thumb_rel}" if thumb_exists else None,
+                    thumbExists=thumb_exists,
                     people=people,
                     tags=tags,
                     createdAt=created_at,
