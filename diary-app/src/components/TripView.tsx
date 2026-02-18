@@ -30,25 +30,10 @@ export function TripView({
   const [err, setErr] = useState<string | null>(null)
   return (
     <div className="grid gap-3">
-      <div>
+      <div className='flex justify-between items-center'>
         <Button variant="outline" size="sm" onClick={onBack}>
           ← zurück
         </Button>
-      </div>
-
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <h2 className="truncate text-lg font-semibold">
-            {trip.meta.title}
-            <span className="ml-2 text-sm font-normal text-muted-foreground">
-              {typeof trip.meta.distanceKm === 'number' ? `${trip.meta.distanceKm.toFixed(1)} km` : ''}
-              {typeof trip.meta.durationMin === 'number' ? ` · ⏱ ${trip.meta.durationMin} min` : ''}
-              {typeof trip.meta.avgKmh === 'number' ? ` · Ø ${trip.meta.avgKmh.toFixed(1)} km/h` : ''}
-              {typeof trip.meta.maxKmh === 'number' ? ` · max ${trip.meta.maxKmh.toFixed(1)} km/h` : ''}
-            </span>
-          </h2>
-          <div className="mt-1 text-sm text-muted-foreground">{formatDateEU(trip.meta.date)}</div>
-        </div>
 
         <AlertDialog>
           <AlertDialogTrigger asChild>
@@ -85,6 +70,19 @@ export function TripView({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+      </div>
+
+      <div className="flex flex-col items-center text-center">
+        <h2 className="max-w-full truncate text-lg font-semibold">
+          {trip.meta.title}
+          <span className="ml-2 text-sm font-normal text-muted-foreground">
+            {typeof trip.meta.distanceKm === 'number' ? ` · ${trip.meta.distanceKm.toFixed(1)} km` : ''}
+            {typeof trip.meta.durationMin === 'number' ? ` · ⏱ ${trip.meta.durationMin} min` : ''}
+            {typeof trip.meta.avgKmh === 'number' ? ` · Ø ${trip.meta.avgKmh.toFixed(1)} km/h` : ''}
+            {typeof trip.meta.maxKmh === 'number' ? ` · max ${trip.meta.maxKmh.toFixed(1)} km/h` : ''}
+            {` · ${formatDateEU(trip.meta.date)}`}
+          </span>
+        </h2>
       </div>
 
       {err ? <div className="text-sm text-destructive whitespace-pre-wrap">{err}</div> : null}
