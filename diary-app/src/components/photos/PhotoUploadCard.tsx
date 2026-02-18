@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { UploadResult } from '@/types/uploads'
-import { uploadPhotos } from '@/api/photos'
+import { uploadPhotos, uploadZip } from '@/api/photos'
 import { chunkArray } from '@/lib/chunk'
 import { UploadProgress } from '@/components/photos/UploadProgress'
 
@@ -13,6 +13,7 @@ export function PhotoUploadCard({ onUploaded }: { onUploaded: () => Promise<void
   const [result, setResult] = useState<UploadResult | null>(null)
   const [uploaded, setUploaded] = useState(0)
   const [dupSkipped, setDupSkipped] = useState(0)
+  const [zipFile, setZipFile] = useState<File | null>(null)
 
   const fileCount = useMemo(() => (files ? files.length : 0), [files])
 
@@ -54,6 +55,26 @@ export function PhotoUploadCard({ onUploaded }: { onUploaded: () => Promise<void
     }
   }
 
+  async function onUploadZip() {
+    if (!zipFile) return
+    setBusy(true)
+    setErr(null)
+    setResult(null)
+    setUploaded(0)
+    setDupSkipped(0)
+
+    try {
+      const json = await uploadZip(zipFile)
+      setResult(json)
+      setZipFile(null)
+      await onUploaded()
+    } catch (e: any) {
+      setErr(e?.message ?? String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -74,6 +95,21 @@ export function PhotoUploadCard({ onUploaded }: { onUploaded: () => Promise<void
         </div>
 
         {busy ? <UploadProgress done={uploaded} total={fileCount} duplicates={dupSkipped} /> : null}
+
+        <div className="mt-3 space-y-2">
+          <div className="text-xs text-muted-foreground">Oder ZIP hochladen (jpg/jpeg/png/webp)</div>
+          <input
+            type="file"
+            accept=".zip,application/zip"
+            onChange={(e) => setZipFile(e.target.files?.[0] ?? null)}
+            disabled={busy}
+          />
+          <div>
+            <Button onClick={onUploadZip} disabled={busy || !zipFile} variant="secondary">
+              {busy ? 'Upload…' : 'ZIP hochladen'}
+            </Button>
+          </div>
+        </div>
 
         {err ? <div className="text-sm text-destructive">{err}</div> : null}
 

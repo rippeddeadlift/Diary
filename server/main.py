@@ -7,6 +7,9 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Any, List
+import zipfile
+import tempfile
+import shutil
 
 from PIL import Image, ImageOps
 
@@ -593,4 +596,140 @@ async def upload_photos(files: List[UploadFile] = File(...)):
         count=len(saved),
         saved=saved,
         duplicatesSkipped=duplicates_skipped,
+    )
+
+
+@app.post("/api/photos/upload-zip", response_model=UploadResponse)
+async def upload_photos_zip(file: UploadFile = File(...)):
+    # High but safe limits
+    MAX_ZIP_BYTES = 3 * 1024 * 1024 * 1024  # 3 GB
+    MAX_FILES = 50_000
+    MAX_UNCOMPRESSED_BYTES = 100 * 1024 * 1024 * 1024  # 100 GB
+
+    # Basic file check
+    name = (file.filename or "upload.zip").lower()
+    if not name.endswith(".zip"):
+        return JSONResponse({"ok": False, "error": "Expected .zip file"}, status_code=400)
+
+    dt = datetime.now().astimezone()
+    batch_dir = PHOTOS_INBOX_DIR / batch_folder_name(dt)
+    batch_dir.mkdir(parents=True, exist_ok=True)
+    prefix = dt.strftime("%Y-%m-%dT%H%M%S")
+
+    sha_idx = load_sha256_index()
+
+    saved: list[UploadSavedItem] = []
+    duplicates_skipped = 0
+    skipped_non_images = 0
+    errors: list[str] = []
+
+    # Store zip to a temp file (avoid holding huge payloads in memory)
+    with tempfile.TemporaryDirectory(prefix="diary_zip_") as tmp:
+        zip_path = Path(tmp) / "upload.zip"
+        total = 0
+        try:
+            with zip_path.open("wb") as w:
+                while True:
+                    chunk = await file.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    total += len(chunk)
+                    if total > MAX_ZIP_BYTES:
+                        return JSONResponse({"ok": False, "error": "ZIP too large (max 3GB)"}, status_code=413)
+                    w.write(chunk)
+        except Exception as e:
+            return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+        # Process zip entries
+        try:
+            zf = zipfile.ZipFile(zip_path)
+        except Exception:
+            return JSONResponse({"ok": False, "error": "Invalid ZIP"}, status_code=400)
+
+        with zf:
+            infos = [i for i in zf.infolist() if not i.is_dir()]
+            if len(infos) > MAX_FILES:
+                return JSONResponse({"ok": False, "error": f"Too many files in ZIP (max {MAX_FILES})"}, status_code=413)
+
+            uncompressed = sum(int(i.file_size or 0) for i in infos)
+            if uncompressed > MAX_UNCOMPRESSED_BYTES:
+                return JSONResponse({"ok": False, "error": "ZIP contents too large"}, status_code=413)
+
+            allowed = {".jpg", ".jpeg", ".png", ".webp"}
+
+            for info in infos:
+                try:
+                    base = Path(info.filename).name
+                    ext = Path(base).suffix.lower()
+                    if ext not in allowed:
+                        skipped_non_images += 1
+                        continue
+
+                    out_name = unique_filename(prefix, base or "image")
+                    out_path = batch_dir / out_name
+
+                    # Extract file to out_path
+                    with zf.open(info, "r") as src, out_path.open("wb") as dst:
+                        shutil.copyfileobj(src, dst, length=1024 * 1024)
+
+                    # Hash + dedupe
+                    try:
+                        h = sha256_file(out_path)
+                    except Exception:
+                        h = None
+
+                    if h and h in sha_idx:
+                        existing_rel = sha_idx.get(h)
+                        existing_path = (DATA_DIR / str(existing_rel)).resolve() if existing_rel else None
+                        if existing_path and existing_path.exists():
+                            try:
+                                out_path.unlink(missing_ok=True)
+                            except Exception:
+                                pass
+                            duplicates_skipped += 1
+                            continue
+                        else:
+                            sha_idx.pop(h, None)
+
+                    # Thumb
+                    try:
+                        rel_under_data = out_path.relative_to(DATA_DIR).as_posix()
+                        ensure_thumb(out_path, rel_under_data)
+                    except Exception:
+                        pass
+
+                    # Sidecar + index
+                    sidecar = build_sidecar_for_image(out_path)
+                    if h:
+                        sidecar["sha256"] = h
+                    sc_path = sidecar_path_for(out_path)
+                    save_sidecar(sc_path, sidecar)
+
+                    if h:
+                        sha_idx[h] = out_path.relative_to(DATA_DIR).as_posix()
+
+                    saved.append(
+                        UploadSavedItem(
+                            file=str(out_path.relative_to(ROOT)).replace("\\", "/"),
+                            sidecar=str(sc_path.relative_to(ROOT)).replace("\\", "/"),
+                            originalName=base,
+                        )
+                    )
+                except Exception as e:
+                    errors.append(f"{info.filename}: {e}")
+                    continue
+
+    # Persist hash index
+    try:
+        save_sha256_index(sha_idx)
+    except Exception:
+        pass
+
+    return UploadResponse(
+        batch=str(batch_dir.relative_to(ROOT)).replace("\\", "/"),
+        count=len(saved),
+        saved=saved,
+        duplicatesSkipped=duplicates_skipped,
+        skippedNonImages=skipped_non_images,
+        errors=errors,
     )

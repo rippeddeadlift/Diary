@@ -48,6 +48,8 @@ class UploadResponse(BaseModel):
     count: int
     saved: list[UploadSavedItem]
     duplicatesSkipped: int = 0
+    skippedNonImages: int = 0
+    errors: list[str] = []
 
 
 class SidecarModel(BaseModel):

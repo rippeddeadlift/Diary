@@ -95,3 +95,15 @@ export async function uploadPhotos(files: FileList | File[]): Promise<UploadResu
 
   return (await res.json()) as UploadResult
 }
+
+export async function uploadZip(zipFile: File): Promise<UploadResult> {
+  const fd = new FormData()
+  fd.append('file', zipFile)
+
+  const res = await fetch('/api/photos/upload-zip', { method: 'POST', body: fd })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(errText(res, text))
+  }
+  return (await res.json()) as UploadResult
+}
