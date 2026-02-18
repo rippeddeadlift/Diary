@@ -30,12 +30,21 @@ export function TripView({
   const [err, setErr] = useState<string | null>(null)
   return (
     <div className="grid gap-3">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-start gap-2">
         <Button variant="outline" size="sm" onClick={onBack}>
           ← zurück
         </Button>
 
-        <h2 className="min-w-0 flex-1 truncate text-lg font-semibold">{trip.meta.title}</h2>
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate text-lg font-semibold">{trip.meta.title}</h2>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <span>{formatDateEU(trip.meta.date)}</span>
+            {typeof trip.meta.distanceKm === 'number' ? <span>· {trip.meta.distanceKm.toFixed(1)} km</span> : null}
+            {typeof trip.meta.durationMin === 'number' ? <span>· ⏱ {trip.meta.durationMin} min</span> : null}
+            {typeof trip.meta.avgKmh === 'number' ? <span>· Ø {trip.meta.avgKmh.toFixed(1)} km/h</span> : null}
+            {typeof trip.meta.maxKmh === 'number' ? <span>· max {trip.meta.maxKmh.toFixed(1)} km/h</span> : null}
+          </div>
+        </div>
 
         <AlertDialog>
           <AlertDialogTrigger asChild>
@@ -73,7 +82,6 @@ export function TripView({
           </AlertDialogContent>
         </AlertDialog>
 
-        <div className="w-full text-sm text-muted-foreground sm:w-auto">{formatDateEU(trip.meta.date)}</div>
       </div>
 
       {err ? <div className="text-sm text-destructive whitespace-pre-wrap">{err}</div> : null}
