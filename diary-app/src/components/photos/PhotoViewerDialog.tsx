@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { GalleryItem } from '@/types/photos'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { getSidecar, updateSidecar } from '@/api/photos'
+import { Button } from '@/components/ui/button'
 import { PhotoPointMap } from '@/components/maps/PhotoPointMap'
 import { PEOPLE, TAGS } from '@/data/tagConfig'
 import { TagChips } from '@/components/photos/TagChips'
@@ -125,6 +126,34 @@ export function PhotoViewerDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, items.length])
 
+  async function shareCurrent() {
+    if (!item) return
+
+    try {
+      const res = await fetch(item.url)
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+      const blob = await res.blob()
+
+      const nameFromPath = (p: string) => {
+        const base = p.split('/').pop() || 'photo'
+        return base
+      }
+
+      const file = new File([blob], nameFromPath(item.path), { type: blob.type || 'image/jpeg' })
+
+      const nav: any = navigator
+      if (nav?.share && nav?.canShare?.({ files: [file] })) {
+        await nav.share({ files: [file], title: 'Foto' })
+        return
+      }
+
+      // Fallback: open image in new tab (user can share/save)
+      window.open(item.url, '_blank', 'noopener,noreferrer')
+    } catch (e: any) {
+      setErr(e?.message ?? String(e))
+    }
+  }
+
   return (
     <Dialog
       open={index !== null}
@@ -153,9 +182,16 @@ export function PhotoViewerDialog({
                   >
                     ←
                   </button>
-                  <div className="rounded-md border bg-background/80 px-2 py-1 text-xs text-muted-foreground">
-                    {index! + 1} / {items.length}
+
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-md border bg-background/80 px-2 py-1 text-xs text-muted-foreground">
+                      {index! + 1} / {items.length}
+                    </div>
+                    <Button type="button" size="sm" variant="outline" onClick={() => void shareCurrent()}>
+                      Teilen
+                    </Button>
                   </div>
+
                   <button
                     type="button"
                     onClick={() => void go(1)}
