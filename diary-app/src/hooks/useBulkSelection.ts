@@ -2,11 +2,11 @@ import { useState } from 'react'
 import type { GalleryItem } from '@/types/photos'
 
 export function useBulkSelection() {
-  const [selectionMode, setSelectionMode] = useState(false)
   const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set())
 
-  function toggleSelectionMode() {
-    setSelectionMode((v) => !v)
+  const selectionMode = selectedPaths.size > 0
+
+  function clearAll() {
     setSelectedPaths(new Set())
   }
 
@@ -20,7 +20,7 @@ export function useBulkSelection() {
   }
 
   function clearSelected() {
-    setSelectedPaths(new Set())
+    clearAll()
   }
 
   function selectAllFiltered(items: GalleryItem[]) {
@@ -29,8 +29,6 @@ export function useBulkSelection() {
 
   return {
     selectionMode,
-    setSelectionMode,
-    toggleSelectionMode,
     selectedPaths,
     toggleSelected,
     clearSelected,

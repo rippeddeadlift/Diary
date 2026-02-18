@@ -23,24 +23,34 @@ export function GalleryGrid({
             type="button"
             key={it.path}
             onClick={() => (selectionMode ? onToggleSelect(it) : onSelect(it))}
-            className="transition-transform duration-200 ease-out transform-gpu hover:scale-105 text-left"
+            className="group transition-transform duration-200 ease-out transform-gpu hover:scale-105 text-left"
           >
             <div className="relative">
               <img src={it.url} alt={it.path} loading="lazy" className="block aspect-square w-full object-cover" />
-              {selectionMode ? (
-                <div
-                  className={
-                    "absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full border text-xs " +
-                    (isSelected ? "bg-primary text-primary-foreground" : "bg-background/70")
-                  }
-                >
-                  {isSelected ? '✓' : ''}
-                </div>
-              ) : null}
+
+              {/* selection toggle (visible on hover, always visible in selection mode) */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onToggleSelect(it)
+                }}
+                className={
+                  "absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full border text-xs transition-opacity " +
+                  (selectionMode ? "opacity-100" : "opacity-0 group-hover:opacity-100") +
+                  " " +
+                  (isSelected ? "bg-primary text-primary-foreground" : "bg-background/70")
+                }
+                aria-label={isSelected ? 'Auswahl entfernen' : 'Auswählen'}
+                title={isSelected ? 'Auswahl entfernen' : 'Auswählen'}
+              >
+                {isSelected ? '✓' : ''}
+              </button>
             </div>
 
             <div className="flex items-center justify-between gap-2 p-2 text-xs text-muted-foreground">
-              {it.tags?.length || it.people?.length ? null : <span>0 tags</span>}
+              {it.tags?.length || it.people?.length ? null : <span>ungetaggt</span>}
               {it.createdAt ? <span className="font-mono">{formatDateTimeEU(it.createdAt)}</span> : null}
             </div>
           </button>

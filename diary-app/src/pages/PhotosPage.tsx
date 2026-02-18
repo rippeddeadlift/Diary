@@ -20,8 +20,7 @@ export function PhotosPage() {
   const [selected, setSelected] = useState<GalleryItem | null>(null)
   const [bulkOpen, setBulkOpen] = useState(false)
 
-  const { selectionMode, toggleSelectionMode, selectedPaths, toggleSelected, clearSelected, selectAllFiltered } =
-    useBulkSelection()
+  const { selectionMode, selectedPaths, toggleSelected, clearSelected, selectAllFiltered } = useBulkSelection()
 
   const { busy: bulkBusy, error: bulkErr, bulkStateOf, toggleBulk } = useBulkTagging({
     gallery,
@@ -63,17 +62,6 @@ export function PhotosPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Button
-                variant={selectionMode ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => {
-                  toggleSelectionMode()
-                  setBulkOpen(false)
-                }}
-              >
-                {selectionMode ? 'Auswahl an' : 'Auswählen'}
-              </Button>
-
               <Button variant="outline" size="sm" onClick={() => setFiltersOpen((v) => !v)}>
                 <Filter className="mr-2 h-4 w-4" /> Filter
               </Button>
@@ -137,7 +125,7 @@ export function PhotosPage() {
             onClear={clearSelected}
             onOpenTags={() => setBulkOpen(true)}
             onDone={() => {
-              toggleSelectionMode()
+              clearSelected()
               setBulkOpen(false)
             }}
           />
