@@ -142,13 +142,31 @@ export function PhotoViewerDialog({
       const file = new File([blob], nameFromPath(item.path), { type: blob.type || 'image/jpeg' })
 
       const nav: any = navigator
-      if (nav?.share && nav?.canShare?.({ files: [file] })) {
-        await nav.share({ files: [file], title: 'Foto' })
-        return
+
+      // Prefer native share (mobile). Some iOS versions are picky with canShare(),
+      // so we try share() and fall back on error.
+      if (nav?.share) {
+        try {
+          await nav.share({ files: [file], title: 'Foto' })
+          return
+        } catch {
+          // fall through
+        }
       }
 
-      // Fallback: open image in new tab (user can share/save)
-      window.open(item.url, '_blank', 'noopener,noreferrer')
+      // Fallback: download the file locally (works without HTTPS share support)
+      const objUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = objUrl
+      a.download = file.name
+      a.rel = 'noopener'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.setTimeout(() => URL.revokeObjectURL(objUrl), 1000)
+
+      // iOS Safari note: Web Share with files usually requires HTTPS.
+      // If you're on http:// in LAN, the download fallback is expected.
     } catch (e: any) {
       setErr(e?.message ?? String(e))
     }
