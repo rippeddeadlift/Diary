@@ -9,11 +9,11 @@ export function GalleryGrid({ items, onSelect }: { items: GalleryItem[]; onSelec
           type="button"
           key={it.path}
           onClick={() => onSelect(it)}
-          className="overflow-hidden rounded-lg border bg-muted text-left"
+          className="transition-transform duration-200 ease-out transform-gpu hover:scale-105 "
         >
           <img src={it.url} alt={it.path} loading="lazy" className="block aspect-square w-full object-cover" />
           <div className="flex items-center justify-between gap-2 p-2 text-xs text-muted-foreground">
-            <span>{it.hasSidecar ? 'taggable' : 'no json'}</span>
+            {it.tags?.length || it.people?.length ? null : <span>ungetaggt</span>}
             {it.createdAt ? <span className="font-mono">{formatDateTimeEU(it.createdAt)}</span> : null}
           </div>
         </button>
