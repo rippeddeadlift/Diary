@@ -92,7 +92,8 @@ def infer_tags_from_title(title: str) -> list[str]:
     if has("wandern", "wanderung", "hike", "hiking", "spaziergang"):
         tags.append("hiking")
 
-    if has("laufen", "lauf", "jog", "jogging", "run", "running", "trailrun", "trail-running"):
+    # Avoid false positive: "Langlauf" is skiing, not running.
+    if "langlauf" not in t and has("laufen", "jog", "jogging", " run", "running", "trailrun", "trail-running"):
         tags.append("running")
 
     if has(
