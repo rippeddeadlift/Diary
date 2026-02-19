@@ -2,7 +2,7 @@ import type { Trip } from '../data/trips'
 import { Badge } from '@/components/ui/badge'
 import { formatDateEU } from "@/lib/date"
 
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { RoutePreview } from '@/components/trips/RoutePreview'
 import { TRIP_ACTIVITY_TAGS } from '@/data/tagConfig'
 

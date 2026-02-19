@@ -3,7 +3,6 @@ import type { Trip } from '@/data/trips'
 import { TripList } from '@/components/TripList'
 import { TripView } from '@/components/TripView'
 import { TripsImportCard } from '@/components/trips/TripsImportCard'
-import { Badge } from '@/components/ui/badge'
 import { FilterBar } from '@/components/FilterBar'
 import { TRIP_ACTIVITY_TAGS, type TripActivityTag } from '@/data/tagConfig'
 
