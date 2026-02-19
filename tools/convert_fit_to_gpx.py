@@ -266,7 +266,8 @@ def main() -> int:
             "unknown": "Activity",
         }.get(sport, "Activity")
 
-        name = f"{date_prefix} {title}"
+        # GPX track name should be a clean activity label (Diary will use meta.title)
+        name = title
         gpx = gpx_from_points(pts, name=name)
 
         # File name: no email/id leakage from Garmin stems
