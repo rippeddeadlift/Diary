@@ -111,8 +111,8 @@ export function PhotosPage() {
                   {tagState === 'all'
                     ? 'Alle'
                     : tagState === 'untagged'
-                      ? '✓ Nur ungetaggte'
-                      : '✓ Nur getaggte'}
+                      ? 'keine tags'
+                      : 'mind. 1 tag'}
                 </button>
               </div>
             </div>
