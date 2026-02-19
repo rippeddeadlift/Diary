@@ -71,61 +71,73 @@ export function GalleryGrid({
       style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
     >
       {virtualRows.map((vr) => {
-          const rowIndex = vr.index
-          const start = rowIndex * cols
-          const rowItems = items.slice(start, start + cols)
+        const rowIndex = vr.index
+        const start = rowIndex * cols
+        const rowItems = items.slice(start, start + cols)
 
-          return (
-            <div
-              key={vr.key}
-              className="absolute left-0 w-full"
-              style={{ transform: `translateY(${vr.start}px)` }}
-            >
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-                {rowItems.map((it) => {
-                  const isSelected = selected.has(it.path)
-                  const imgUrl = it.thumbExists && it.thumbUrl ? it.thumbUrl : it.url
-                  return (
+        return (
+          <div
+            key={vr.key}
+            className="absolute left-0 w-full"
+            style={{ transform: `translateY(${vr.start}px)` }}
+          >
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+              {rowItems.map((it) => {
+                const isSelected = selected.has(it.path)
+                const imgUrl = it.thumbExists && it.thumbUrl ? it.thumbUrl : it.url
+                return (
+                  <div
+                    key={it.path}
+                    className="group relative transition-all hover:scale-[1.02]"
+                  >
+                    {/* Outer clickable for select/viewer */}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      className="block cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                      onClick={() => onSelect(it)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          onSelect(it)
+                        }
+                      }}
+                    >
+                      <div className="relative overflow-hidden rounded">
+                        <LazyThumb url={imgUrl} alt={it.path} />
+                      </div>
+                    </div>
+
+                    {/* Hover toggle circle (always hover-visible, selection-always) */}
                     <button
                       type="button"
-                      key={it.path}
-                      onClick={() => (selectionMode ? onToggleSelect(it) : onSelect(it))}
-                      className="group transition-transform duration-200 ease-out transform-gpu hover:scale-105 text-left"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onToggleSelect(it)
+                      }}
+                      className={
+                        "absolute right-2 top-2 z-20 flex h-8 w-8 items-center justify-center rounded-full border-2 text-sm font-bold shadow-md backdrop-blur transition-all " +
+                        (selectionMode 
+                          ? "opacity-100 border-primary bg-primary/90 text-primary-foreground hover:scale-110 hover:shadow-lg" 
+                          : "opacity-0 group-hover:opacity-100 border-muted bg-background/80 text-muted-foreground hover:bg-accent hover:border-accent hover:text-foreground"
+                        )
+                      }
+                      aria-label={isSelected ? 'Auswahl entfernen' : 'Auswählen (Bulk Mode)'}
+                      title={isSelected ? 'Auswahl entfernen' : 'Auswählen (Bulk Mode aktivieren)'}
                     >
-                      <div className="relative">
-                        <LazyThumb url={imgUrl} alt={it.path} />
-
-                        {/* selection toggle (visible on hover, always visible in selection mode) */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            onToggleSelect(it)
-                          }}
-                          className={
-                            "absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full border text-xs transition-opacity " +
-                            (selectionMode ? "opacity-100" : "opacity-0 group-hover:opacity-100") +
-                            " " +
-                            (isSelected ? "bg-primary text-primary-foreground" : "bg-background/70")
-                          }
-                          aria-label={isSelected ? 'Auswahl entfernen' : 'Auswählen'}
-                          title={isSelected ? 'Auswahl entfernen' : 'Auswählen'}
-                        >
-                          {isSelected ? '✓' : ''}
-                        </button>
-                      </div>
-
-                      <div className="flex items-center justify-between gap-2 p-2 text-xs text-muted-foreground">
-                        {it.tags?.length || it.people?.length ? null : <span>0 tags</span>}
-                        {it.createdAt ? <span className="font-mono">{formatDateTimeEU(it.createdAt)}</span> : null}
-                      </div>
+                      {isSelected ? '✓' : ''}
                     </button>
-                  )
-                })}
-              </div>
+
+                    <div className="flex items-center justify-between gap-2 p-2 text-xs text-muted-foreground">
+                      {it.tags?.length || it.people?.length ? null : <span>0 tags</span>}
+                      {it.createdAt ? <span className="font-mono">{formatDateTimeEU(it.createdAt)}</span> : null}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-          )
+          </div>
+        )
       })}
     </div>
   )

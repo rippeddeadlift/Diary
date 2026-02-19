@@ -97,7 +97,7 @@ export function PhotosPage() {
 
               <div className="space-y-2">
                 <div className="text-xs text-muted-foreground">Tags</div>
-                <TagChips options={TAGS} value={tagFilter} onChange={setTagFilter} />
+                <TagChips options={PHOTO_TAGS} value={tagFilter} onChange={setTagFilter} />
               </div>
 
               <div>

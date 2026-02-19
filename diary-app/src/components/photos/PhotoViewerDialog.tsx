@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { getSidecar, updateSidecar } from '@/api/photos'
 import { Button } from '@/components/ui/button'
 import { PhotoPointMap } from '@/components/maps/PhotoPointMap'
-import { PEOPLE, TAGS } from '@/data/tagConfig'
+import { PEOPLE, PHOTO_TAGS } from '@/data/tagConfig'
 import { TagChips } from '@/components/photos/TagChips'
 import { Switch } from '@/components/ui/switch'
 
@@ -242,7 +242,7 @@ export function PhotoViewerDialog({
 
                     <div className="space-y-2">
                       <div className="text-xs text-muted-foreground">Tags</div>
-                      <TagChips options={TAGS} value={tags} onChange={setTags} />
+                      <TagChips options={PHOTO_TAGS} value={tags} onChange={setTags} />
                     </div>
 
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">

@@ -32,7 +32,8 @@ export function useBulkTagging({
     for (const p of selectedList) {
       const it = gallery.find((g) => g.path === p)
       const arr = kind === 'people' ? it?.people ?? [] : it?.tags ?? []
-      if (arr.includes(String(opt))) yes += 1
+      const optStr = String(opt)
+      if (arr.some(p => p === optStr)) yes += 1
     }
 
     if (yes === 0) return 'off'

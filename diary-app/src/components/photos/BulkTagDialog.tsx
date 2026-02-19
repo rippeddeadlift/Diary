@@ -46,7 +46,7 @@ export function BulkTagDialog({
             <div className="text-xs text-muted-foreground">Tags</div>
             <div className={busy ? 'pointer-events-none opacity-60' : ''}>
               <BulkTagChips
-                options={TAGS}
+                options={PHOTO_TAGS}
                 stateOf={(opt) => bulkStateOf(opt, 'tags')}
                 onToggle={(opt, st) => void onToggle(opt, st, 'tags')}
               />
