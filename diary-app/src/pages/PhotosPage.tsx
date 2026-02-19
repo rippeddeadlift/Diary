@@ -14,6 +14,7 @@ import { useBulkSelection } from '@/hooks/useBulkSelection'
 import { useBulkTagging } from '@/hooks/useBulkTagging'
 import { PEOPLE, PHOTO_TAGS } from '@/data/tagConfig'
 import type { Person, PhotoTag } from '@/data/tagConfig'
+import { PhotoFilterPanel } from '@/components/PhotoFilterPanel'
 import { trashPhotos } from '@/api/photos'
 
 export function PhotosPage() {
@@ -34,6 +35,12 @@ export function PhotosPage() {
   const [peopleFilter, setPeopleFilter] = useState<Person[]>([])
   const [tagFilter, setTagFilter] = useState<PhotoTag[]>([])
   const [tagState, setTagState] = useState<'all' | 'untagged' | 'tagged'>('all')
+
+  const resetFilters = useCallback(() => {
+    setPeopleFilter([])
+    setTagFilter([])
+    setTagState('all')
+  }, [])
 
   const filtered = useMemo(() => {
     return gallery.filter((it) => {
