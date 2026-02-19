@@ -75,6 +75,8 @@ from .models import (
     TrashTripsResponse,
     TripMetaUpdateRequest,
     TripMetaUpdateResponse,
+    FitnessLogRequest,
+    FitnessLogResponse,
     UploadResponse,
     UploadSavedItem,
 )
@@ -551,6 +553,17 @@ def update_trip_meta(req: TripMetaUpdateRequest):
     meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     return TripMetaUpdateResponse()
+
+
+@app.post("/api/fitness/log", response_model=FitnessLogResponse)
+def fitness_log(req: FitnessLogRequest):
+    csv_dir = DATA_DIR / "fitness"
+    csv_dir.mkdir(exist_ok=True)
+    csv_path = csv_dir / f"{req.exercise}.csv"
+    today = datetime.now().date().isoformat()
+    line = f'"{today}","{req.sets}"\n'
+    csv_path.write_text(line, mode="a", encoding="utf-8")
+    return FitnessLogResponse(ok=True)
 
 
 @app.post("/api/photos/upload", response_model=UploadResponse)

@@ -129,3 +129,12 @@ class TripMetaUpdateRequest(BaseModel):
 
 class TripMetaUpdateResponse(BaseModel):
     ok: bool = True
+
+
+class FitnessLogRequest(BaseModel):
+    exercise: str  # dips, pullups
+    sets: str  # "7" or "8,7,6"
+
+class FitnessLogResponse(BaseModel):
+    ok: bool = True
+
