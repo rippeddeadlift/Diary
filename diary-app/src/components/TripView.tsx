@@ -63,7 +63,7 @@ export function TripView({
     }
 
     const handle = setTimeout(() => {
-      ;(async () => {
+      ; (async () => {
         try {
           await updateTripMeta({ id: trip.id, title: title.trim() || trip.meta.title, tags: normalizedTags })
         } catch (e: any) {
@@ -136,39 +136,42 @@ export function TripView({
         <div className="text-sm text-muted-foreground sm:text-right">{formatDateEU(tripView.meta.date)}</div>
       </div>
 
-      {/* You said you already moved this under the map; keep simple here */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="text-xs text-muted-foreground">Bearbeiten</div>
-        <Switch checked={editMode} onCheckedChange={setEditMode} />
-      </div>
 
-      {editMode ? (
-        <div className="space-y-3 rounded-lg border bg-muted/20 p-3">
-          <div className="space-y-2">
-            <div className="text-xs text-muted-foreground">Titel</div>
-            <input
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </div>
 
-          <div className="space-y-2">
-            <div className="text-xs text-muted-foreground">Aktivität</div>
-            <TagChips
-              options={TRIP_ACTIVITY_TAGS}
-              value={tags}
-              onChange={(next) => setTags(ensureSingleActivity(next))}
-            />
-          </div>
-        </div>
-      ) : null}
+
 
       {err ? <div className="text-sm text-destructive whitespace-pre-wrap">{err}</div> : null}
 
       <div className="grid grid-cols-1 gap-3">
         <GpxMap trip={tripView} />
         <TripPhotoSuggestions trip={tripView} />
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-xs text-muted-foreground">Bearbeiten</div>
+          <Switch checked={editMode} onCheckedChange={setEditMode} />
+
+        </div>
+        {editMode ? (
+          <div className="space-y-3 rounded-lg border bg-muted/20 p-3">
+            <div className="space-y-2">
+              <div className="text-xs text-muted-foreground">Titel</div>
+              <input
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-xs text-muted-foreground">Aktivität</div>
+              <TagChips
+                options={TRIP_ACTIVITY_TAGS}
+                value={tags}
+                onChange={(next) => setTags(ensureSingleActivity(next))}
+              />
+            </div>
+
+          </div>
+        ) : null}
         <Notes trip={tripView} />
       </div>
     </div>
