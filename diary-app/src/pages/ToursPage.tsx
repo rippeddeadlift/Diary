@@ -7,20 +7,55 @@ import { Badge } from '@/components/ui/badge'
 
 type ToursView = { kind: 'list' } | { kind: 'trip'; trip: Trip }
 
-type Activity = 'all' | 'cycling' | 'running' | 'hiking' | 'skiing'
+type Activity = 'all' | 'cycling' | 'running' | 'hiking' | 'skiing' | 'unknown'
+
+type SortKey = 'date_desc' | 'distance_desc' | 'duration_desc' | 'avg_desc' | 'max_desc'
 
 function tripHasActivity(t: Trip, activity: Exclude<Activity, 'all'>): boolean {
+  if (activity === 'unknown') return (t.meta.tags || []).length === 0
   return (t.meta.tags || []).includes(activity)
+}
+
+function compareMaybeNumberDesc(a: number | undefined, b: number | undefined): number {
+  const aa = typeof a === 'number' && Number.isFinite(a) ? a : null
+  const bb = typeof b === 'number' && Number.isFinite(b) ? b : null
+  if (aa === null && bb === null) return 0
+  if (aa === null) return 1
+  if (bb === null) return -1
+  return bb - aa
+}
+
+function compareTrips(a: Trip, b: Trip, sort: SortKey): number {
+  if (sort === 'distance_desc') {
+    const c = compareMaybeNumberDesc(a.meta.distanceKm, b.meta.distanceKm)
+    return c !== 0 ? c : b.meta.date.localeCompare(a.meta.date)
+  }
+  if (sort === 'duration_desc') {
+    const c = compareMaybeNumberDesc(a.meta.durationMin, b.meta.durationMin)
+    return c !== 0 ? c : b.meta.date.localeCompare(a.meta.date)
+  }
+  if (sort === 'avg_desc') {
+    const c = compareMaybeNumberDesc(a.meta.avgKmh, b.meta.avgKmh)
+    return c !== 0 ? c : b.meta.date.localeCompare(a.meta.date)
+  }
+  if (sort === 'max_desc') {
+    const c = compareMaybeNumberDesc(a.meta.maxKmh, b.meta.maxKmh)
+    return c !== 0 ? c : b.meta.date.localeCompare(a.meta.date)
+  }
+  // default: newest first
+  return b.meta.date.localeCompare(a.meta.date)
 }
 
 export function ToursPage({ trips, onReload }: { trips: Trip[]; onReload: () => Promise<void> }) {
   const [view, setView] = useState<ToursView>({ kind: 'list' })
   const [activity, setActivity] = useState<Activity>('all')
+  const [sort, setSort] = useState<SortKey>('date_desc')
 
   const visibleTrips = useMemo(() => {
-    if (activity === 'all') return trips
-    return trips.filter((t) => tripHasActivity(t, activity))
-  }, [activity, trips])
+    const filtered = activity === 'all' ? trips : trips.filter((t) => tripHasActivity(t, activity))
+    const sorted = [...filtered].sort((a, b) => compareTrips(a, b, sort))
+    return sorted
+  }, [activity, sort, trips])
 
   if (view.kind === 'trip') {
     return (
@@ -39,18 +74,35 @@ export function ToursPage({ trips, onReload }: { trips: Trip[]; onReload: () => 
     <div className="space-y-4">
       <TripsImportCard onImported={onReload} />
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {(
           [
             { key: 'all', label: 'Alle' },
             { key: 'cycling', label: 'cycling' },
             { key: 'running', label: 'running' },
             { key: 'hiking', label: 'hiking' },
-            { key: 'skiing', label: 'skiing' }
+            { key: 'skiing', label: 'skiing' },
+            { key: 'unknown', label: 'unknown' }
           ] as const
         ).map((it) => (
           <button key={it.key} type="button" onClick={() => setActivity(it.key)} className="rounded-md">
             <Badge variant={activity === it.key ? 'default' : 'secondary'}>{it.label}</Badge>
+          </button>
+        ))}
+
+        <div className="w-2" />
+
+        {(
+          [
+            { key: 'date_desc', label: 'Neueste' },
+            { key: 'distance_desc', label: 'Distanz' },
+            { key: 'duration_desc', label: 'Dauer' },
+            { key: 'avg_desc', label: 'Ø km/h' },
+            { key: 'max_desc', label: 'max km/h' }
+          ] as const
+        ).map((it) => (
+          <button key={it.key} type="button" onClick={() => setSort(it.key)} className="rounded-md">
+            <Badge variant={sort === it.key ? 'default' : 'secondary'}>{it.label}</Badge>
           </button>
         ))}
       </div>
