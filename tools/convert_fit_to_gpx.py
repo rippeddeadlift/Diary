@@ -98,11 +98,7 @@ def iter_fit_points(path: Path) -> list[FitPoint]:
                     continue
 
                 ts = fields.get("timestamp")
-                if isinstance(ts, datetime):
-                    # fitdecode returns aware UTC datetimes
-                    t = ts
-                else:
-                    t = None
+                t = ts if isinstance(ts, datetime) else None
 
                 ele = fields.get("altitude")
                 ele_m = float(ele) if isinstance(ele, (int, float)) else None
@@ -124,6 +120,59 @@ def estimate_duration_minutes(pts: list[FitPoint]) -> float | None:
     if sec <= 0:
         return None
     return sec / 60.0
+
+
+def detect_start_time_and_sport(path: Path, pts: list[FitPoint]) -> tuple[datetime | None, str]:
+    """Try to read start_time + sport from FIT metadata (session/activity messages).
+
+    Returns (start_time_utc, sport_tag).
+    sport_tag is one of: cycling|running|hiking|skiing|unknown
+    """
+
+    start: datetime | None = None
+    sport: str = "unknown"
+
+    def normalize_sport(v: object) -> str:
+        s = str(v).lower()
+        # common FIT sport enums
+        if "cycling" in s or "bike" in s or "biking" in s:
+            return "cycling"
+        if "running" in s or s == "run":
+            return "running"
+        if "hiking" in s or "walking" in s or "walk" in s:
+            return "hiking"
+        if "cross_country_skiing" in s or "ski" in s:
+            return "skiing"
+        return "unknown"
+
+    try:
+        with fitdecode.FitReader(str(path), check_crc=False) as fit:
+            for frame in fit:
+                if not isinstance(frame, fitdecode.FitDataMessage):
+                    continue
+                if frame.name not in {"session", "activity", "sport"}:
+                    continue
+                fields = {f.name: f.value for f in frame.fields}
+
+                # Prefer explicit session start_time
+                st = fields.get("start_time") or fields.get("timestamp")
+                if start is None and isinstance(st, datetime):
+                    start = st
+
+                sp = fields.get("sport")
+                if sp is not None:
+                    sport = normalize_sport(sp)
+
+                # If we already have both, we can stop early.
+                if start is not None and sport != "unknown":
+                    break
+    except Exception:
+        pass
+
+    if start is None:
+        start = next((p.time for p in pts if p.time is not None), None)
+
+    return start, sport
 
 
 def gpx_from_points(pts: list[FitPoint], *, name: str) -> str:
@@ -204,19 +253,27 @@ def main() -> int:
             skipped_short += 1
             continue
 
-        # Build a readable name
-        start_time = next((p.time for p in pts if p.time is not None), None)
+        start_time, sport = detect_start_time_and_sport(f, pts)
         date_prefix = start_time.date().isoformat() if start_time else "unknown-date"
-        name = f"{date_prefix} {f.stem}"
+        time_prefix = start_time.strftime("%H%M") if start_time else "0000"
 
+        # Make the GPX <name> useful for our importer/tag inference
+        title = {
+            "cycling": "Cycling",
+            "running": "Running",
+            "hiking": "Hiking",
+            "skiing": "Skiing",
+            "unknown": "Activity",
+        }.get(sport, "Activity")
+
+        name = f"{date_prefix} {title}"
         gpx = gpx_from_points(pts, name=name)
 
-        out_name = safe_out_name(f"{date_prefix}_{f.stem}.gpx")
+        # File name: no email/id leakage from Garmin stems
+        out_name = safe_out_name(f"{date_prefix}_{time_prefix}_{sport}.gpx")
         dst = out_dir / out_name
-
         if dst.exists():
-            # Ensure unique
-            dst = out_dir / safe_out_name(f"{date_prefix}_{f.stem}_{int(f.stat().st_mtime)}.gpx")
+            dst = out_dir / safe_out_name(f"{date_prefix}_{time_prefix}_{sport}_{int(f.stat().st_mtime)}.gpx")
 
         try:
             if not args.dry_run:
