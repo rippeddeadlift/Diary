@@ -70,6 +70,14 @@ def guess_title_from_filename(name: str) -> str:
     if parts and re.fullmatch(r"\d{6,}", parts[0]):
         parts = parts[1:]
 
+    # Drop leading HHMM time part if present (e.g. 2019-06-24_0628_cycling.gpx)
+    if parts and re.fullmatch(r"\d{4}", parts[0]):
+        parts = parts[1:]
+
+    # If only a sport tag remains, make it a clean title
+    if len(parts) == 1 and parts[0].lower() in {"cycling", "running", "hiking", "skiing", "activity"}:
+        return parts[0].capitalize()
+
     base = "_".join(parts) if parts else base
 
     # Replace separators with spaces and collapse whitespace
