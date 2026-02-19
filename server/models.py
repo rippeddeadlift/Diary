@@ -119,3 +119,13 @@ class TrashTripsResponse(BaseModel):
     ok: bool = True
     trashed: int
     batch: str
+
+
+class TripMetaUpdateRequest(BaseModel):
+    id: str
+    title: str
+    tags: list[str] = []
+
+
+class TripMetaUpdateResponse(BaseModel):
+    ok: bool = True

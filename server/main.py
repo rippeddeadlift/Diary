@@ -73,6 +73,8 @@ from .models import (
     TrashPhotosResponse,
     TrashTripsRequest,
     TrashTripsResponse,
+    TripMetaUpdateRequest,
+    TripMetaUpdateResponse,
     UploadResponse,
     UploadSavedItem,
 )
@@ -512,6 +514,43 @@ def trash_trips(req: TrashTripsRequest):
         TRIPS_INDEX.write_text(json.dumps(idx, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     return TrashTripsResponse(trashed=trashed, batch=str(trash_batch_dir.relative_to(DATA_DIR)).replace("\\", "/"))
+
+
+@app.post("/api/trips/meta", response_model=TripMetaUpdateResponse)
+def update_trip_meta(req: TripMetaUpdateRequest):
+    if not TRIPS_INDEX.exists():
+        return JSONResponse({"ok": False, "error": "Trips index not found"}, status_code=404)
+
+    idx = json.loads(TRIPS_INDEX.read_text(encoding="utf-8"))
+    trips = list(idx.get("trips") or [])
+
+    rel: str | None = None
+    for t in trips:
+        if isinstance(t, dict) and t.get("id") == req.id:
+            p = t.get("path")
+            if isinstance(p, str):
+                rel = p
+            break
+
+    if not rel:
+        return JSONResponse({"ok": False, "error": "Trip not found"}, status_code=404)
+
+    trip_dir = (TRIPS_DIR / rel).resolve()
+    try:
+        trip_dir.relative_to(TRIPS_DIR)
+    except Exception:
+        return JSONResponse({"ok": False, "error": "Invalid path"}, status_code=400)
+
+    meta_path = trip_dir / "meta.json"
+    if not meta_path.exists():
+        return JSONResponse({"ok": False, "error": "meta.json not found"}, status_code=404)
+
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    meta["title"] = str(req.title)
+    meta["tags"] = [str(x) for x in (req.tags or []) if x is not None and str(x).strip()]
+    meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    return TripMetaUpdateResponse()
 
 
 @app.post("/api/photos/upload", response_model=UploadResponse)
