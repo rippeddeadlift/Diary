@@ -3,14 +3,14 @@ import { cn } from '@/lib/utils'
 
 export type BulkState = 'off' | 'on' | 'mixed'
 
-export function BulkTagChips({
+export function BulkTagChips<T extends string>({
   options,
   stateOf,
   onToggle
 }: {
-  options: readonly string[]
-  stateOf: (opt: string) => BulkState
-  onToggle: (opt: string, current: BulkState) => void
+  options: readonly T[]
+  stateOf: (opt: T) => BulkState
+  onToggle: (opt: T, current: BulkState) => void
 }) {
   return (
     <div className="flex flex-wrap gap-2">

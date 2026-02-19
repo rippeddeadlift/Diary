@@ -1,5 +1,5 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { PEOPLE, TAGS } from '@/data/tagConfig'
+import { PEOPLE, PHOTO_TAGS } from '@/data/tagConfig'
 import { BulkTagChips } from '@/components/photos/BulkTagChips'
 import type { BulkState } from '@/hooks/useBulkTagging'
 

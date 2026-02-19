@@ -1,15 +1,15 @@
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 
-export function TagChips({
+export function TagChips<T extends string>({
   options,
   value,
   onChange,
   hideInactive
 }: {
-  options: readonly string[]
-  value: string[]
-  onChange: (next: string[]) => void
+  options: readonly T[]
+  value: T[]
+  onChange: (next: T[]) => void
   hideInactive?: boolean
 }) {
   function toggle(tag: string) {

@@ -1,3 +1,5 @@
+import type { Person, PhotoTag } from '@/data/tagConfig'
+
 export type PhotoLocation = { lat: number; lon: number } | null
 
 export type GalleryItem = {
@@ -8,8 +10,8 @@ export type GalleryItem = {
   thumbUrl?: string | null
   thumbExists?: boolean
 
-  people?: string[]
-  tags?: string[]
+  people?: Person[]
+  tags?: PhotoTag[]
   createdAt?: string | null
   location?: PhotoLocation
   missing?: boolean

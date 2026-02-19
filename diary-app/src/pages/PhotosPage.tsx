@@ -12,7 +12,8 @@ import { BulkTagDialog } from '@/components/photos/BulkTagDialog'
 import { SelectionBar } from '@/components/photos/SelectionBar'
 import { useBulkSelection } from '@/hooks/useBulkSelection'
 import { useBulkTagging } from '@/hooks/useBulkTagging'
-import { PEOPLE, TAGS } from '@/data/tagConfig'
+import { PEOPLE, PHOTO_TAGS } from '@/data/tagConfig'
+import type { Person, PhotoTag } from '@/data/tagConfig'
 import { trashPhotos } from '@/api/photos'
 
 export function PhotosPage() {
@@ -30,8 +31,8 @@ export function PhotosPage() {
   })
 
   const [filtersOpen, setFiltersOpen] = useState(false)
-  const [peopleFilter, setPeopleFilter] = useState<string[]>([])
-  const [tagFilter, setTagFilter] = useState<string[]>([])
+  const [peopleFilter, setPeopleFilter] = useState<Person[]>([])
+  const [tagFilter, setTagFilter] = useState<PhotoTag[]>([])
   const [tagState, setTagState] = useState<'all' | 'untagged' | 'tagged'>('all')
 
   const filtered = useMemo(() => {
