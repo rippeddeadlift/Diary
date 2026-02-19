@@ -4,7 +4,7 @@ import { TripList } from '@/components/TripList'
 import { TripView } from '@/components/TripView'
 import { TripsImportCard } from '@/components/trips/TripsImportCard'
 import { Badge } from '@/components/ui/badge'
-import { TRIP_ACTIVITY_TAGS, type TripActivityTag } from '@/data/tripTagConfig'
+import { TRIP_ACTIVITY_TAGS, type TripActivityTag } from '@/data/tagConfig'
 
 type ToursView = { kind: 'list' } | { kind: 'trip'; trip: Trip }
 

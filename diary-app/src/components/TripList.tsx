@@ -4,7 +4,7 @@ import { formatDateEU } from "@/lib/date"
 
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { RoutePreview } from '@/components/trips/RoutePreview'
-import { TRIP_ACTIVITY_TAGS } from '@/data/tripTagConfig'
+import { TRIP_ACTIVITY_TAGS } from '@/data/tagConfig'
 
 function formatDurationMin(min: number): string {
   if (!Number.isFinite(min) || min <= 0) return ''

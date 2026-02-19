@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Switch } from '@/components/ui/switch'
 import { TagChips } from '@/components/photos/TagChips'
-import { TRIP_ACTIVITY_TAGS } from '@/data/tripTagConfig'
+import { TRIP_ACTIVITY_TAGS } from '@/data/tagConfig'
 
 function ensureSingleActivity(tags: string[]): string[] {
   const activities = new Set(TRIP_ACTIVITY_TAGS as unknown as string[])
