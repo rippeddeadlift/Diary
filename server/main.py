@@ -562,6 +562,8 @@ def fitness_log(req: FitnessLogRequest):
     csv_path = csv_dir / f"{req.exercise}.csv"
     today = datetime.now().date().isoformat()
     line = f'"{today}","{req.sets}"\n'
+    if not csv_path.exists():
+        csv_path.write_text('date,sets\n', encoding="utf-8")
     csv_path.write_text(line, mode="a", encoding="utf-8")
     return FitnessLogResponse(ok=True)
 
