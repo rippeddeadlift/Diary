@@ -34,11 +34,16 @@ export function TripList({ trips, onOpen }: { trips: Trip[]; onOpen: (t: Trip) =
 
                 <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                   <span>{formatDateEU(t.meta.date)}</span>
-                  {(t.meta.tags || []).includes('cycling') ? (
-                    <Badge variant="default">cycling</Badge>
-                  ) : (t.meta.tags || []).includes('hiking') ? (
-                    <Badge variant="default">hiking</Badge>
-                  ) : null}
+                  {(() => {
+                    const tags = t.meta.tags || []
+                    const primary =
+                      (tags.includes('cycling') && 'cycling') ||
+                      (tags.includes('running') && 'running') ||
+                      (tags.includes('hiking') && 'hiking') ||
+                      (tags.includes('skiing') && 'skiing') ||
+                      null
+                    return primary ? <Badge variant="default">{primary}</Badge> : null
+                  })()}
                 </div>
 
                 <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -55,7 +60,9 @@ export function TripList({ trips, onOpen }: { trips: Trip[]; onOpen: (t: Trip) =
                   ) : null}
 
                   {(() => {
-                    const tags = (t.meta.tags || []).filter((x) => x !== 'cycling' && x !== 'hiking')
+                    const tags = (t.meta.tags || []).filter(
+                      (x) => x !== 'cycling' && x !== 'running' && x !== 'hiking' && x !== 'skiing'
+                    )
                     return tags.length ? (
                       <>
                         {tags.slice(0, 2).map((tag) => (
