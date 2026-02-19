@@ -86,29 +86,24 @@ export function GalleryGrid({
                 const isSelected = selected.has(it.path)
                 const imgUrl = it.thumbExists && it.thumbUrl ? it.thumbUrl : it.url
                 return (
-                  <div
-                    key={it.path}
-                    className="group relative transition-all hover:scale-[1.02]"
-                  >
-                    {/* Outer clickable for select/viewer */}
+                  <div key={it.path} className="group relative transition-all hover:scale-[1.02]">
+                    {/* Tile clickable */}
                     <div
                       role="button"
                       tabIndex={0}
-                      className="block cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                      onClick={() => onSelect(it)}
+                      className="block cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring rounded overflow-hidden"
+                      onClick={() => selectionMode ? onToggleSelect(it) : onSelect(it)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault()
-                          onSelect(it)
+                          selectionMode ? onToggleSelect(it) : onSelect(it)
                         }
                       }}
                     >
-                      <div className="relative overflow-hidden rounded">
-                        <LazyThumb url={imgUrl} alt={it.path} />
-                      </div>
+                      <LazyThumb url={imgUrl} alt={it.path} />
                     </div>
 
-                    {/* Hover toggle circle (always hover-visible, selection-always) */}
+                    {/* Hover/selection circle (precise toggle, always hover-visible) */}
                     <button
                       type="button"
                       onClick={(e) => {
@@ -116,14 +111,14 @@ export function GalleryGrid({
                         onToggleSelect(it)
                       }}
                       className={
-                        "absolute right-2 top-2 z-20 flex h-8 w-8 items-center justify-center rounded-full border-2 text-sm font-bold shadow-md backdrop-blur transition-all " +
+                        "absolute right-2 top-2 z-20 flex h-8 w-8 items-center justify-center rounded-full border-2 shadow-md backdrop-blur transition-all " +
                         (selectionMode 
-                          ? "opacity-100 border-primary bg-primary/90 text-primary-foreground hover:scale-110 hover:shadow-lg" 
-                          : "opacity-0 group-hover:opacity-100 border-muted bg-background/80 text-muted-foreground hover:bg-accent hover:border-accent hover:text-foreground"
+                          ? "opacity-100 border-primary bg-primary/90 text-primary-foreground hover:scale-110" 
+                          : "opacity-0 group-hover:opacity-100 border-muted bg-background/80 hover:bg-accent"
                         )
                       }
-                      aria-label={isSelected ? 'Auswahl entfernen' : 'Auswählen (Bulk Mode)'}
-                      title={isSelected ? 'Auswahl entfernen' : 'Auswählen (Bulk Mode aktivieren)'}
+                      aria-label={isSelected ? 'Auswahl entfernen' : 'Auswählen'}
+                      title={isSelected ? 'Auswahl entfernen' : 'Auswählen'}
                     >
                       {isSelected ? '✓' : ''}
                     </button>
