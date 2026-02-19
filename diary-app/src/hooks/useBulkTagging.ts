@@ -25,14 +25,14 @@ export function useBulkTagging({
 
   const selectedList = useMemo(() => Array.from(selectedPaths), [selectedPaths])
 
-  function bulkStateOf(opt: string, kind: 'people' | 'tags'): BulkState {
+  function bulkStateOf(opt: unknown, kind: 'people' | 'tags'): BulkState {
     if (selectedList.length === 0) return 'off'
 
     let yes = 0
     for (const p of selectedList) {
       const it = gallery.find((g) => g.path === p)
       const arr = kind === 'people' ? it?.people ?? [] : it?.tags ?? []
-      if (arr.includes(opt)) yes += 1
+      if (arr.includes(String(opt))) yes += 1
     }
 
     if (yes === 0) return 'off'
