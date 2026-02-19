@@ -4,6 +4,7 @@ import { TripList } from '@/components/TripList'
 import { TripView } from '@/components/TripView'
 import { TripsImportCard } from '@/components/trips/TripsImportCard'
 import { Badge } from '@/components/ui/badge'
+import { FilterBar } from '@/components/FilterBar'
 import { TRIP_ACTIVITY_TAGS, type TripActivityTag } from '@/data/tagConfig'
 
 type ToursView = { kind: 'list' } | { kind: 'trip'; trip: Trip }
@@ -75,35 +76,28 @@ export function ToursPage({ trips, onReload }: { trips: Trip[]; onReload: () => 
     <div className="space-y-4">
       <TripsImportCard onImported={onReload} />
 
-      <div className="flex flex-wrap items-center gap-2">
-        {(
-          [
-            { key: 'all', label: 'Alle' },
-            ...TRIP_ACTIVITY_TAGS.map((t) => ({ key: t, label: t })),
-            { key: 'unknown', label: 'unknown' }
-          ] as const
-        ).map((it) => (
-          <button key={it.key} type="button" onClick={() => setActivity(it.key as Activity)} className="rounded-md">
-            <Badge variant={activity === it.key ? 'default' : 'secondary'}>{it.label}</Badge>
-          </button>
-        ))}
-
-        <div className="w-2" />
-
-        {(
-          [
-            { key: 'date_desc', label: 'Neueste' },
-            { key: 'distance_desc', label: 'Distanz' },
-            { key: 'duration_desc', label: 'Dauer' },
-            { key: 'avg_desc', label: 'Ø km/h' },
-            { key: 'max_desc', label: 'max km/h' }
-          ] as const
-        ).map((it) => (
-          <button key={it.key} type="button" onClick={() => setSort(it.key)} className="rounded-md">
-            <Badge variant={sort === it.key ? 'default' : 'secondary'}>{it.label}</Badge>
-          </button>
-        ))}
-      </div>
+      <FilterBar
+        chips={[
+          { key: 'all', label: 'Alle' },
+          ...TRIP_ACTIVITY_TAGS.map((t) => ({ key: t, label: t })),
+          { key: 'unknown', label: 'unknown' }
+        ]}
+        activeChip={activity}
+        onChipChange={setActivity}
+        sorts={[
+          { key: 'date_desc', label: 'Neueste' },
+          { key: 'distance_desc', label: 'Distanz' },
+          { key: 'duration_desc', label: 'Dauer' },
+          { key: 'avg_desc', label: 'Ø km/h' },
+          { key: 'max_desc', label: 'max km/h' }
+        ]}
+        activeSort={sort}
+        onSortChange={setSort}
+        onReset={() => {
+          setActivity('all')
+          setSort('date_desc')
+        }}
+      />
 
       <TripList trips={visibleTrips} onOpen={(trip) => setView({ kind: 'trip', trip })} />
     </div>
