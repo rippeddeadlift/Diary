@@ -17,4 +17,17 @@ export type GalleryItem = {
   missing?: boolean
 }
 
-export type GalleryResponse = { ok: boolean; items: GalleryItem[] }
+export type RawGalleryItem = {
+  path: string
+  url: string
+  hasSidecar: boolean
+  thumbUrl?: string | null
+  thumbExists?: boolean
+  people?: string[]
+  tags?: string[]
+  createdAt?: string | null
+  location?: PhotoLocation
+  missing?: boolean
+}
+
+export type GalleryResponse = { ok: boolean; items: RawGalleryItem[] }

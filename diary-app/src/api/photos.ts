@@ -1,5 +1,7 @@
 import type { GalleryResponse, GalleryItem } from '@/types/photos'
 import type { UploadResult } from '@/types/uploads'
+import { normalizeGalleryItem } from '@/lib/tags'
+import type { GalleryItem } from '@/types/photos'
 
 export type Sidecar = {
   people: string[]
@@ -16,7 +18,7 @@ export async function listGallery(): Promise<GalleryItem[]> {
   const res = await fetch('/api/photos/inbox/all')
   if (!res.ok) throw new Error(errText(res))
   const json = (await res.json()) as GalleryResponse
-  return json.items ?? []
+  return (json.items ?? []).map(normalizeGalleryItem)
 }
 
 export async function suggestPhotos(params: { date: string; bbox?: [number, number, number, number]; limit?: number }): Promise<GalleryItem[]> {
@@ -27,7 +29,7 @@ export async function suggestPhotos(params: { date: string; bbox?: [number, numb
   const res = await fetch(`/api/photos/suggest?${qs.toString()}`)
   if (!res.ok) throw new Error(errText(res))
   const json = (await res.json()) as GalleryResponse
-  return json.items ?? []
+  return (json.items ?? []).map(normalizeGalleryItem)
 }
 
 export async function getSidecar(path: string): Promise<Sidecar> {
