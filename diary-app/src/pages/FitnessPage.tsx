@@ -51,37 +51,28 @@ function FitnessDashboard({ onOpenDips, onOpenPullups }: { onOpenDips: () => voi
   const [pullupsRows, setPullupsRows] = useState<SetsRow[] | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
-  // lightweight polling on the dashboard too
-  useMemo(() => {
-    let cancelled = false
-
-    const refresh = async () => {
-      try {
-        setErr(null)
-        const [dips, pullups] = await Promise.all([loadSetsCsv(DIPS_PATH), loadSetsCsv(PULLUPS_PATH)])
-        if (!cancelled) {
-          setDipsRows(dips)
-          setPullupsRows(pullups)
-        }
-      } catch (e: any) {
-        if (!cancelled) setErr(e?.message ?? String(e))
-      }
+  const refresh = useCallback(async () => {
+    try {
+      setErr(null)
+      const [dips, pullups] = await Promise.all([loadSetsCsv(DIPS_PATH), loadSetsCsv(PULLUPS_PATH)])
+      setDipsRows(dips)
+      setPullupsRows(pullups)
+    } catch (e: any) {
+      setErr(e?.message ?? String(e))
     }
+  }, [])
 
+  // polling
+  useEffect(() => {
     refresh()
     const id = window.setInterval(refresh, 5000)
-
-    const onVis = () => {
-      if (document.visibilityState === 'visible') refresh()
-    }
+    const onVis = () => document.visibilityState === 'visible' && refresh()
     document.addEventListener('visibilitychange', onVis)
-
     return () => {
-      cancelled = true
       window.clearInterval(id)
       document.removeEventListener('visibilitychange', onVis)
     }
-  }, [])
+  }, [refresh])
 
   const dipsToday = useMemo(() => dipsRows?.find((r) => r.date === today)?.total ?? 0, [dipsRows, today])
   const pullupsToday = useMemo(() => pullupsRows?.find((r) => r.date === today)?.total ?? 0, [pullupsRows, today])
