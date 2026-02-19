@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Switch } from '@/components/ui/switch'
 import { TagChips } from '@/components/photos/TagChips'
-import { TRIP_ACTIVITY_TAGS, TRIP_TAGS } from '@/data/tripTagConfig'
+import { TRIP_ACTIVITY_TAGS } from '@/data/tripTagConfig'
 
 function ensureSingleActivity(tags: string[]): string[] {
   const activities = new Set(TRIP_ACTIVITY_TAGS as unknown as string[])
@@ -136,6 +136,7 @@ export function TripView({
         <div className="text-sm text-muted-foreground sm:text-right">{formatDateEU(tripView.meta.date)}</div>
       </div>
 
+      {/* You said you already moved this under the map; keep simple here */}
       <div className="flex items-center justify-between gap-3">
         <div className="text-xs text-muted-foreground">Bearbeiten</div>
         <Switch checked={editMode} onCheckedChange={setEditMode} />
@@ -159,11 +160,6 @@ export function TripView({
               value={tags}
               onChange={(next) => setTags(ensureSingleActivity(next))}
             />
-          </div>
-
-          <div className="space-y-2">
-            <div className="text-xs text-muted-foreground">Tags</div>
-            <TagChips options={TRIP_TAGS} value={tags} onChange={setTags} />
           </div>
         </div>
       ) : null}

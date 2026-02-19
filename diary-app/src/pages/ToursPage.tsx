@@ -4,10 +4,11 @@ import { TripList } from '@/components/TripList'
 import { TripView } from '@/components/TripView'
 import { TripsImportCard } from '@/components/trips/TripsImportCard'
 import { Badge } from '@/components/ui/badge'
+import { TRIP_ACTIVITY_TAGS, type TripActivityTag } from '@/data/tripTagConfig'
 
 type ToursView = { kind: 'list' } | { kind: 'trip'; trip: Trip }
 
-type Activity = 'all' | 'cycling' | 'running' | 'hiking' | 'skiing' | 'unknown'
+type Activity = 'all' | 'unknown' | TripActivityTag
 
 type SortKey = 'date_desc' | 'distance_desc' | 'duration_desc' | 'avg_desc' | 'max_desc'
 
@@ -78,14 +79,11 @@ export function ToursPage({ trips, onReload }: { trips: Trip[]; onReload: () => 
         {(
           [
             { key: 'all', label: 'Alle' },
-            { key: 'cycling', label: 'cycling' },
-            { key: 'running', label: 'running' },
-            { key: 'hiking', label: 'hiking' },
-            { key: 'skiing', label: 'skiing' },
+            ...TRIP_ACTIVITY_TAGS.map((t) => ({ key: t, label: t })),
             { key: 'unknown', label: 'unknown' }
           ] as const
         ).map((it) => (
-          <button key={it.key} type="button" onClick={() => setActivity(it.key)} className="rounded-md">
+          <button key={it.key} type="button" onClick={() => setActivity(it.key as Activity)} className="rounded-md">
             <Badge variant={activity === it.key ? 'default' : 'secondary'}>{it.label}</Badge>
           </button>
         ))}

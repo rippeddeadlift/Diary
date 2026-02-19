@@ -4,6 +4,7 @@ import { formatDateEU } from "@/lib/date"
 
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { RoutePreview } from '@/components/trips/RoutePreview'
+import { TRIP_ACTIVITY_TAGS } from '@/data/tripTagConfig'
 
 function formatDurationMin(min: number): string {
   if (!Number.isFinite(min) || min <= 0) return ''
@@ -36,12 +37,7 @@ export function TripList({ trips, onOpen }: { trips: Trip[]; onOpen: (t: Trip) =
                   <span>{formatDateEU(t.meta.date)}</span>
                   {(() => {
                     const tags = t.meta.tags || []
-                    const primary =
-                      (tags.includes('cycling') && 'cycling') ||
-                      (tags.includes('running') && 'running') ||
-                      (tags.includes('hiking') && 'hiking') ||
-                      (tags.includes('skiing') && 'skiing') ||
-                      null
+                    const primary = TRIP_ACTIVITY_TAGS.find((x) => tags.includes(x)) ?? null
                     return primary ? <Badge variant="default">{primary}</Badge> : null
                   })()}
                 </div>
@@ -60,9 +56,7 @@ export function TripList({ trips, onOpen }: { trips: Trip[]; onOpen: (t: Trip) =
                   ) : null}
 
                   {(() => {
-                    const tags = (t.meta.tags || []).filter(
-                      (x) => x !== 'cycling' && x !== 'running' && x !== 'hiking' && x !== 'skiing'
-                    )
+                    const tags = (t.meta.tags || []).filter((x) => !(TRIP_ACTIVITY_TAGS as readonly string[]).includes(x))
                     return tags.length ? (
                       <>
                         {tags.slice(0, 2).map((tag) => (
