@@ -17,7 +17,7 @@ export function FitnessPage() {
   const [pullupsRows, setPullupsRows] = useState<SetsRow[] | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
-const refresh = useCallback(async () => {
+  const refresh = useCallback(async () => {
     try {
       setErr(null)
       const [dips, pullups] = await Promise.all([loadSetsCsv(DIPS_PATH), loadSetsCsv(PULLUPS_PATH)])
@@ -70,8 +70,8 @@ const refresh = useCallback(async () => {
       <LogCard onLogged={refresh} />
       {err ? <div className="text-sm text-destructive">{err}</div> : null}
       <div className="grid gap-4 sm:grid-cols-2">
-        <FitnessTile title="Dips" today={dipsToday} rows={dipsRows} todayISO={today} onClick={() => setView('dips')} />
-        <FitnessTile title="Pull-ups" today={pullupsToday} rows={pullupsRows} todayISO={today} onClick={() => setView('pullups')} />
+        <FitnessTileCard title="Dips" today={dipsToday} rows={dipsRows} todayISO={today} onClick={() => setView('dips')} />
+        <FitnessTileCard title="Pull-ups" today={pullupsToday} rows={pullupsRows} todayISO={today} onClick={() => setView('pullups')} />
       </div>
       <Card className="border-0 shadow-sm">
         <CardHeader>
@@ -83,7 +83,7 @@ const refresh = useCallback(async () => {
   )
 }
 
-function FitnessTile({
+function FitnessTileCard({
   title,
   today,
   rows,
