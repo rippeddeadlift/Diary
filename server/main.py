@@ -42,18 +42,18 @@ def ensure_thumb(img_abs: Path, rel_under_data: str, *, max_size: int = 512) -> 
 
     # Only generate thumbs for common raster formats.
     ext = img_abs.suffix.lower()
-    if ext not in {".jpg", ".jpeg", ".png", ".webp"}:
+    if ext not in {".jpg", ".jpeg", ".png", ".webp", ".heic"}:
         return
 
     dst.parent.mkdir(parents=True, exist_ok=True)
 
     with Image.open(img_abs) as im:
         im = ImageOps.exif_transpose(im)
-        if ext in {".jpg", ".jpeg"}:
+        if ext in {".jpg", ".jpeg", ".heic"}:
             im = im.convert("RGB")
         im.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
 
-        if ext in {".jpg", ".jpeg"}:
+        if ext in {".jpg", ".jpeg", ".heic"}:
             im.save(dst, format="JPEG", quality=82, optimize=True, progressive=True)
         elif ext == ".png":
             im.save(dst, format="PNG", optimize=True)
