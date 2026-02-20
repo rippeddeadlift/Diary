@@ -62,17 +62,16 @@ export function LogCard({ onLogged }: LogCardProps) {
           </div>
         </div>
         <div className="space-y-2">
-          <label className="text-xs font-medium">Sets (comma reps oder +N)</label>
+          <label className="text-xs font-medium">Sets</label>
           <Input
-            placeholder="8,7,6 oder +7"
+            placeholder="Set Zahl"
             value={sets}
             onChange={(e) => setSets(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && log()}
           />
-          <div className="text-xs text-muted-foreground">Beispiel: "10" oder "12,11,10"</div>
         </div>
         <Button onClick={log} disabled={busy || !sets.trim()} className="w-full">
-          {busy ? 'Logge...' : 'Loggen'}
+          {busy ? 'Logge...' : 'Logge für GAINS'}
         </Button>
       </CardContent>
     </Card>
