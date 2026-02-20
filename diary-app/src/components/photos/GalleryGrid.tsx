@@ -114,13 +114,13 @@ export function GalleryGrid({
                         e.stopPropagation()
                         onToggleSelect(it)
                       }}
-className={cn(
+                      className={cn(
                         "absolute right-2 top-2 z-20 flex h-8 w-8 items-center justify-center rounded-full border-2 shadow-md backdrop-blur transition-all duration-200",
                         selectionMode
                           ? [
-                              "scale-110 border-black/90 bg-black/80 opacity-100 shadow-xl group-hover:bg-white/80",
-                              isSelected ? "group-hover:text-black":""
-                            ]
+                            "scale-110 border-black/90 bg-black/80 opacity-100 shadow-xl group-hover:bg-white/80",
+                            isSelected ? "group-hover:text-black" : ""
+                          ]
                           : "opacity-0 group-hover:opacity-100 bg-black/50 border-black text-black"
                       )}
                       aria-label={isSelected ? 'Auswahl entfernen' : 'Auswählen'}
