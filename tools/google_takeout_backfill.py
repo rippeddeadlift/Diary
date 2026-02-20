@@ -48,10 +48,43 @@ for json_path in takeout_root.rglob('*.json'):
 
         # Glob: **/IMG_7994*.jp*g
         candidates = glob.glob(str(DATA_INBOX / '**' / f'*IMG_{photo_id}*.jp*g'), recursive=True)
-        print(f'  Candidates: {candidates}')
         if not candidates:
             no_match += 1
             continue
+        # NEU: Wir prüfen alle gefundenen Dateien mit dieser ID
+        applied = False
+        for cand in candidates:
+            photo_path = Path(cand)
+            sidecar_path = photo_path.with_name(photo_path.name + '.json')
+            
+            if not sidecar_path.exists():
+                continue
+                
+            sidecar_data = json.loads(sidecar_path.read_text(encoding='utf-8'))
+            
+            # Wenn dieses Bild schon ein Datum hat, prüfen wir das nächste Duplikat
+            if sidecar_data.get('createdAt'):
+                continue
+
+            # Wir haben ein Bild ohne Datum gefunden!
+            photo_time = data.get('photoTakenTime', {}) or data.get('creationTime', {})
+            ts_sec = photo_time.get('timestamp')
+            if not ts_sec:
+                skipped_no_ts += 1
+                break # Kein Timestamp im JSON, Abbruch für dieses JSON
+                
+            sidecar_data['createdAt'] = unix_sec_to_iso(ts_sec)
+            sidecar_data['createdAtSource'] = 'google_takeout'
+            sidecar_path.write_text(json.dumps(sidecar_data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+            print(f'✓ Fixed {photo_path.name}: {ts_sec} → {sidecar_data["createdAt"]}')
+            fixed += 1
+            applied = True
+            break # Erfolgreich eingetragen, wir können mit dem nächsten JSON weitermachen
+
+        if not applied:
+            # Kein passendes Bild ohne Datum gefunden
+            skipped_has_date += 1
+            print(f'  Skipped: Alle {len(candidates)} Bilder mit ID {photo_id} haben bereits ein Datum oder keinen Sidecar')
         photo_path = Path(candidates[0])
         print(f'  Match: {photo_path}')
         sidecar_path = photo_path.with_name(photo_path.name + '.json')
