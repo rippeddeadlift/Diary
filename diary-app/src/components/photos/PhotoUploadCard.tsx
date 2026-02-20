@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { UploadResult } from '@/types/uploads'
@@ -7,6 +7,8 @@ import { chunkArray } from '@/lib/chunk'
 import { UploadProgress } from '@/components/photos/UploadProgress'
 
 export function PhotoUploadCard({ onUploaded }: { onUploaded: () => Promise<void> }) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const folderInputRef = useRef<HTMLInputElement>(null)
   const [files, setFiles] = useState<FileList | null>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
@@ -80,16 +82,61 @@ export function PhotoUploadCard({ onUploaded }: { onUploaded: () => Promise<void
           Sidecar angelegt.
         </p>
 
-        <input
-          type="file"
-          accept="image/*,.zip,application/zip"
-          multiple
-          onChange={(e) => setFiles(e.target.files)}
-        />
+        {/* Versteckte Inputs */}
+        <div className="hidden">
+          <input
+            type="file"
+            accept="image/*,.zip,application/zip"
+            multiple
+            ref={fileInputRef}
+            onChange={(e) => setFiles(e.target.files)}
+          />
+          <input
+            type="file"
+            multiple
+            {...{ webkitdirectory: '' } as React.InputHTMLAttributes<HTMLInputElement>}
+            ref={folderInputRef}
+            onChange={(e) => {
+              if (!e.target.files) return
+              const dt = new DataTransfer()
+              Array.from(e.target.files).forEach((f) => {
+                if (f.type.startsWith('image/')) dt.items.add(f)
+              })
+              setFiles(dt.files)
+            }}
+          />
+        </div>
+
+        {/* Sichtbare UI */}
+        <div className="flex flex-col gap-3 rounded-md border p-4 bg-muted/50">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={busy}
+            >
+              Dateien / ZIP wählen
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => folderInputRef.current?.click()}
+              disabled={busy}
+            >
+              Ordner wählen
+            </Button>
+          </div>
+
+          {fileCount > 0 && (
+            <div className="text-sm font-medium">
+              Ausgewählt: {singleZip ? singleZip.name : `${fileCount} Bilder`}
+            </div>
+          )}
+        </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={onUpload} disabled={busy || fileCount === 0}>
-            {busy ? 'Upload…' : singleZip ? 'ZIP importieren' : `Upload (${fileCount})`}
+          <Button onClick={onUpload} disabled={busy || fileCount === 0} className="w-full sm:w-auto">
+            {busy ? 'Upload…' : singleZip ? 'ZIP importieren' : `Upload starten (${fileCount})`}
           </Button>
         </div>
 
