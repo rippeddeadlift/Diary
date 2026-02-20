@@ -129,3 +129,11 @@ class TripMetaUpdateRequest(BaseModel):
 
 class TripMetaUpdateResponse(BaseModel):
     ok: bool = True
+
+
+class FitnessLogRequest(BaseModel):
+    exercise: str
+    sets: str
+
+class FitnessLogResponse(BaseModel):
+    ok: bool = True

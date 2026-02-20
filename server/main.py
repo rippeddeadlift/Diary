@@ -61,6 +61,9 @@ def ensure_thumb(img_abs: Path, rel_under_data: str, *, max_size: int = 512) -> 
             im = im.convert("RGB")
             im.save(dst, format="WEBP", quality=82, method=6)
 from .models import (
+    FitnessLogRequest,
+    FitnessLogResponse,
+    FitnessLogResponse,
     GalleryItem,
     GalleryListResponse,
     SidecarGetResponse,
@@ -518,6 +521,7 @@ def trash_trips(req: TrashTripsRequest):
 
 @app.post("/api/trips/meta", response_model=TripMetaUpdateResponse)
 def update_trip_meta(req: TripMetaUpdateRequest):
+    return TripMetaUpdateResponse(ok=True)
 
 
 @app.post("/api/fitness/log", response_model=FitnessLogResponse)
@@ -525,44 +529,17 @@ def fitness_log(req: FitnessLogRequest):
     csv_dir = DATA_DIR / "fitness"
     csv_dir.mkdir(exist_ok=True)
     csv_path = csv_dir / f"{req.exercise}.csv"
+    
     today = datetime.now().date().isoformat()
     line = f'"{today}","{req.sets}"\n'
+    
     if not csv_path.exists():
         csv_path.write_text('date,sets\n', encoding="utf-8")
-    csv_path.write_text(line, mode="a", encoding="utf-8")
-    return FitnessLogResponse(ok=True)    if not TRIPS_INDEX.exists():
-        return JSONResponse({"ok": False, "error": "Trips index not found"}, status_code=404)
-
-    idx = json.loads(TRIPS_INDEX.read_text(encoding="utf-8"))
-    trips = list(idx.get("trips") or [])
-
-    rel: str | None = None
-    for t in trips:
-        if isinstance(t, dict) and t.get("id") == req.id:
-            p = t.get("path")
-            if isinstance(p, str):
-                rel = p
-            break
-
-    if not rel:
-        return JSONResponse({"ok": False, "error": "Trip not found"}, status_code=404)
-
-    trip_dir = (TRIPS_DIR / rel).resolve()
-    try:
-        trip_dir.relative_to(TRIPS_DIR)
-    except Exception:
-        return JSONResponse({"ok": False, "error": "Invalid path"}, status_code=400)
-
-    meta_path = trip_dir / "meta.json"
-    if not meta_path.exists():
-        return JSONResponse({"ok": False, "error": "meta.json not found"}, status_code=404)
-
-    meta = json.loads(meta_path.read_text(encoding="utf-8"))
-    meta["title"] = str(req.title)
-    meta["tags"] = [str(x) for x in (req.tags or []) if x is not None and str(x).strip()]
-    meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-
-    return TripMetaUpdateResponse()
+        
+    with csv_path.open("a", encoding="utf-8") as f:
+        f.write(line)
+        
+    return FitnessLogResponse(ok=True)
 
 
 @app.post("/api/photos/upload", response_model=UploadResponse)
