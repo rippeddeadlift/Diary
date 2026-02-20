@@ -10,7 +10,7 @@ function parseSetsCell(cell: string): number[] {
 }
 
 export async function loadSetsCsv(csvPath: string): Promise<SetsRow[]> {
-  const res = await fetch(`${csvPath}?ts=${Date.now()}`)
+  const res = await fetch(`${csvPath}?ts=${Date.now()}`, { cache: 'no-cache' })
   if (!res.ok) return []  // 404 = empty CSV
   const text = await res.text()
 

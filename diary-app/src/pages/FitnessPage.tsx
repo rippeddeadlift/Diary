@@ -17,14 +17,14 @@ export function FitnessPage() {
   const [pullupsRows, setPullupsRows] = useState<SetsRow[] | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
-  const refresh = useCallback(async () => {
+const refresh = useCallback(async () => {
     try {
       setErr(null)
       const [dips, pullups] = await Promise.all([loadSetsCsv(DIPS_PATH), loadSetsCsv(PULLUPS_PATH)])
       setDipsRows(dips)
       setPullupsRows(pullups)
-    } catch (e: any) {
-      setErr(e?.message ?? String(e))
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : String(e))
     }
   }, [])
 
@@ -38,6 +38,9 @@ export function FitnessPage() {
       document.removeEventListener('visibilitychange', onVis)
     }
   }, [refresh])
+  const today = getTodayISO()
+  const dipsToday = useMemo(() => dipsRows?.find((r) => r.date === today)?.total ?? 0, [dipsRows, today])
+  const pullupsToday = useMemo(() => pullupsRows?.find((r) => r.date === today)?.total ?? 0, [pullupsRows, today])
 
   if (view === 'dips') {
     return (
@@ -61,9 +64,6 @@ export function FitnessPage() {
     )
   }
 
-  const today = getTodayISO()
-  const dipsToday = useMemo(() => dipsRows?.find((r) => r.date === today)?.total ?? 0, [dipsRows, today])
-  const pullupsToday = useMemo(() => pullupsRows?.find((r) => r.date === today)?.total ?? 0, [pullupsRows, today])
 
   return (
     <div className="space-y-6">
