@@ -639,6 +639,7 @@ async def upload_photos(files: List[UploadFile] = File(...)):
             h = None
 
         if h and h in sha_idx:
+            print(f"SKIPPED Duplicate: {f.filename} (Hash: {h[:8]}...)") # Neu
             existing_rel = sha_idx.get(h)
             existing_path = (DATA_DIR / str(existing_rel)).resolve() if existing_rel else None
             if existing_path and existing_path.exists():

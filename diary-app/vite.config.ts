@@ -59,9 +59,20 @@ export default defineConfig({
     fs: { allow: ['..'] },
     // Proxy API calls to local upload backend (FastAPI)
     proxy: {
-      '/api': 'http://127.0.0.1:8787',
-      // Gallery images are served by FastAPI under /files
-      '/files': 'http://127.0.0.1:8787'
+      '/api': {
+        target: 'http://127.0.0.1:8787',
+        changeOrigin: true,
+        // 10 Minuten Timeout (600.000 ms)
+        timeout: 600000,
+        proxyTimeout: 600000,
+      },
+      '/files': {
+        target: 'http://127.0.0.1:8787',
+        changeOrigin: true,
+        // Auch für Files schadet ein höheres Timeout nicht
+        timeout: 600000,
+        proxyTimeout: 600000,
+      }
     }
   },
   resolve: {

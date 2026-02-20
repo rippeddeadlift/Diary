@@ -1,7 +1,6 @@
 import type { GalleryResponse, GalleryItem } from '@/types/photos'
 import type { UploadResult } from '@/types/uploads'
 import { normalizeGalleryItem } from '@/lib/tags'
-import type { GalleryItem } from '@/types/photos'
 
 export type Sidecar = {
   people: string[]

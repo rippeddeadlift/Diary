@@ -15,7 +15,7 @@ export function PhotoUploadCard({ onUploaded }: { onUploaded: () => Promise<void
   const [result, setResult] = useState<UploadResult | null>(null)
   const [uploaded, setUploaded] = useState(0)
   const [dupSkipped, setDupSkipped] = useState(0)
-
+  const batchSize = 10;
   const fileCount = useMemo(() => (files ? files.length : 0), [files])
   const singleZip = useMemo(() => {
     if (!files || files.length !== 1) return null
@@ -44,7 +44,7 @@ export function PhotoUploadCard({ onUploaded }: { onUploaded: () => Promise<void
 
       // image mode
       const all = Array.from(files)
-      const batches = chunkArray(all, 25)
+      const batches = chunkArray(all, batchSize)
 
       let totalSaved = 0
       let totalDup = 0
@@ -57,7 +57,7 @@ export function PhotoUploadCard({ onUploaded }: { onUploaded: () => Promise<void
         totalSaved += json.count ?? 0
         totalDup += json.duplicatesSkipped ?? 0
 
-        setUploaded((i + 1) * 25 > all.length ? all.length : (i + 1) * 25)
+        setUploaded((i + 1) * batchSize > all.length ? all.length : (i + 1) * batchSize)
         setDupSkipped(totalDup)
       }
 
@@ -97,12 +97,30 @@ export function PhotoUploadCard({ onUploaded }: { onUploaded: () => Promise<void
             {...{ webkitdirectory: '' } as React.InputHTMLAttributes<HTMLInputElement>}
             ref={folderInputRef}
             onChange={(e) => {
-              if (!e.target.files) return
-              const dt = new DataTransfer()
-              Array.from(e.target.files).forEach((f) => {
-                if (f.type.startsWith('image/')) dt.items.add(f)
-              })
-              setFiles(dt.files)
+              const rawFiles = e.target.files;
+              if (!rawFiles || rawFiles.length === 0) return;
+
+              // Erlaubte Endungen
+              const allowedExts = ['.jpg', '.jpeg', '.png', '.heic', '.heif'];
+
+              // Filtere nach Dateiendung statt MIME-Type
+              const validFiles = Array.from(rawFiles).filter((f) => {
+                const name = f.name.toLowerCase();
+                return allowedExts.some(ext => name.endsWith(ext));
+              });
+
+              if (validFiles.length === 0) {
+                alert("Keine unterstützten Medien (Bilder/Videos) in diesem Ordner gefunden.");
+                return;
+              }
+
+              const dt = new DataTransfer();
+              validFiles.forEach((f) => dt.items.add(f));
+
+              setFiles(dt.files);
+
+              // Input zurücksetzen, damit dieselbe Auswahl nochmal getriggert werden kann
+              e.target.value = "";
             }}
           />
         </div>
