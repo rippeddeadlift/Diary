@@ -8,6 +8,7 @@ import { MenuPage } from '@/pages/MenuPage'
 import { FitnessPage } from '@/pages/FitnessPage'
 import { ToursPage } from '@/pages/ToursPage'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { Toaster } from 'sonner'
 
 type Page = 'menu' | 'home' | 'photos' | 'tours' | 'fitness'
 
@@ -86,6 +87,7 @@ export default function App() {
               <Button variant="outline" size="sm" onClick={goMenu}>
                 Home
               </Button>
+              <Toaster />
               <ThemeToggle />
             </div>
           </header>
