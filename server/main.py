@@ -518,7 +518,19 @@ def trash_trips(req: TrashTripsRequest):
 
 @app.post("/api/trips/meta", response_model=TripMetaUpdateResponse)
 def update_trip_meta(req: TripMetaUpdateRequest):
-    if not TRIPS_INDEX.exists():
+
+
+@app.post("/api/fitness/log", response_model=FitnessLogResponse)
+def fitness_log(req: FitnessLogRequest):
+    csv_dir = DATA_DIR / "fitness"
+    csv_dir.mkdir(exist_ok=True)
+    csv_path = csv_dir / f"{req.exercise}.csv"
+    today = datetime.now().date().isoformat()
+    line = f'"{today}","{req.sets}"\n'
+    if not csv_path.exists():
+        csv_path.write_text('date,sets\n', encoding="utf-8")
+    csv_path.write_text(line, mode="a", encoding="utf-8")
+    return FitnessLogResponse(ok=True)    if not TRIPS_INDEX.exists():
         return JSONResponse({"ok": False, "error": "Trips index not found"}, status_code=404)
 
     idx = json.loads(TRIPS_INDEX.read_text(encoding="utf-8"))
