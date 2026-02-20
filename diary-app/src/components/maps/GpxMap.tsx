@@ -22,7 +22,7 @@ export function GpxMap({ trip }: { trip: Trip }) {
   if (err) return <div style={{ color: 'crimson' }}>{err}</div>
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden z-0">
       <CardContent className="p-0">
         {gpxText ? <LeafletMap gpxText={gpxText} /> : <div className="p-4 text-sm text-muted-foreground">Karte…</div>}
       </CardContent>
