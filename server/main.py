@@ -521,6 +521,33 @@ def trash_trips(req: TrashTripsRequest):
 
 @app.post("/api/trips/meta", response_model=TripMetaUpdateResponse)
 def update_trip_meta(req: TripMetaUpdateRequest):
+    if not TRIPS_INDEX.exists():
+        return JSONResponse({"ok": False, "error": "Trips index not found"}, status_code=404)
+
+    idx = json.loads(TRIPS_INDEX.read_text(encoding="utf-8"))
+    trips = idx.get("trips", [])
+
+    trip_entry = None
+    for t in trips:
+        if t.get("id") == req.id:
+            trip_entry = t
+            break
+
+    if not trip_entry:
+        return JSONResponse({"ok": False, "error": f"Trip {req.id} not found"}, status_code=404)
+
+    trip_dir = TRIPS_DIR / trip_entry["path"]
+    meta_path = trip_dir / "meta.json"
+
+    if not meta_path.exists():
+        return JSONResponse({"ok": False, "error": f"Meta file not found for trip {req.id}"}, status_code=404)
+
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    meta["title"] = req.title
+    meta["tags"] = req.tags
+
+    meta_path.write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
+
     return TripMetaUpdateResponse(ok=True)
 
 

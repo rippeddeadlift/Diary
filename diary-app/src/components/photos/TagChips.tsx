@@ -12,7 +12,7 @@ export function TagChips<T extends string>({
   onChange: (next: T[]) => void
   hideInactive?: boolean
 }) {
-  function toggle(tag: string) {
+  function toggle(tag: T) {
     const has = value.includes(tag)
     if (has) onChange(value.filter((t) => t !== tag))
     else onChange([...value, tag])
