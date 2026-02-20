@@ -15,6 +15,51 @@
       ],
       "preLaunchTask": "Diary: Start (Backend + Frontend + Chrome)",
       "console": "integratedTerminal"
+    },
+    {
+      "name": "Diary: Tests (Backend / pytest)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "Write-Host 'Running backend tests via preLaunchTask...'; Start-Sleep -Seconds 5"
+      ],
+      "preLaunchTask": "Diary: Tests (Backend / pytest)",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Diary: Tests (Frontend / vitest)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "Write-Host 'Running frontend tests via preLaunchTask...'; Start-Sleep -Seconds 5"
+      ],
+      "preLaunchTask": "Diary: Tests (Frontend / vitest)",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Diary: Tests (All)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "Write-Host 'Running all tests via preLaunchTask...'; Start-Sleep -Seconds 5"
+      ],
+      "preLaunchTask": "Diary: Tests (All)",
+      "console": "integratedTerminal"
     }
   ]
 }

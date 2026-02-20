@@ -16,6 +16,19 @@
       "problemMatcher": []
     },
     {
+      "label": "Diary: Tests (Backend / pytest)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "cd \"${workspaceFolder}\"; if (!(Test-Path server\\.venv)) { python -m venv server\\.venv }; .\\server\\.venv\\Scripts\\Activate.ps1; pip install -r server\\requirements.txt; python -m pytest -v"
+      ],
+      "problemMatcher": []
+    },
+    {
       "label": "Diary: Frontend (Vite)",
       "type": "shell",
       "command": "npm run dev -- --host 0.0.0.0 --port 5173",
@@ -23,6 +36,19 @@
         "cwd": "${workspaceFolder}\\diary-app"
       },
       "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Diary: Tests (Frontend / vitest)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "cd \"${workspaceFolder}\\diary-app\"; npm install; npm test -- --run"
+      ],
       "problemMatcher": []
     },
     {
@@ -42,6 +68,12 @@
       "label": "Diary: Start (Backend + Frontend + Chrome)",
       "dependsOrder": "parallel",
       "dependsOn": ["Diary: Backend (FastAPI)", "Diary: Frontend (Vite)", "Diary: Open Chrome"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Diary: Tests (All)",
+      "dependsOrder": "parallel",
+      "dependsOn": ["Diary: Tests (Backend / pytest)", "Diary: Tests (Frontend / vitest)"],
       "problemMatcher": []
     }
   ]

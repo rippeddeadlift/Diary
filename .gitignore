@@ -19,3 +19,13 @@ data/trips/_trash/
 
 # GPX import archive
 /data/import/gpx/_done/
+
+# Test coverage
+htmlcov/
+.coverage
+.nyc_output
+coverage/
+*.cover
+.hypothesis/
+.pytest_cache/
+vitest.config.ts.timestamp-*
