@@ -11,7 +11,7 @@ function parseSetsCell(cell: string): number[] {
 
 export async function loadSetsCsv(csvPath: string): Promise<SetsRow[]> {
   const res = await fetch(`${csvPath}?ts=${Date.now()}`)
-  if (!res.ok) throw new Error(`Cannot load ${csvPath}`)
+  if (!res.ok) return []  // 404 = empty CSV
   const text = await res.text()
 
   const lines = text.trim().split(/\r?\n/)
