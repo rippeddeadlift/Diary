@@ -47,14 +47,14 @@ for json_path in takeout_root.rglob('*.json'):
         print(f'Processing {json_path.name} → ID \'{photo_id}\' (title \'{title}\')')
 
         # Glob: **/IMG_7994*.jp*g
-        candidates = glob.glob(str(DATA_INBOX / '**' / f'IMG_{photo_id}*.jp*g'), recursive=True)
+        candidates = glob.glob(str(DATA_INBOX / '**' / f'*IMG_{photo_id}*.jp*g'), recursive=True)
         print(f'  Candidates: {candidates}')
         if not candidates:
             no_match += 1
             continue
         photo_path = Path(candidates[0])
         print(f'  Match: {photo_path}')
-        sidecar_path = photo_path.with_suffix('.json')
+        sidecar_path = photo_path.with_name(photo_path.name + '.json')
         if not sidecar_path.exists():
             print(f'  No sidecar: {sidecar_path}')
             no_match += 1
