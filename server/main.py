@@ -531,15 +531,28 @@ def fitness_log(req: FitnessLogRequest):
     csv_path = csv_dir / f"{req.exercise}.csv"
     
     today = datetime.now().date().isoformat()
-    line = f'"{today}","{req.sets}"\n'
     
-    if not csv_path.exists():
-        csv_path.write_text('date,sets\n', encoding="utf-8")
+    lines = []
+    if csv_path.exists():
+        with csv_path.open("r", encoding="utf-8") as f:
+            lines = f.readlines()
+
+    # Prüfen, ob der letzte Eintrag von heute ist
+    if lines and lines[-1].startswith(today):
+        # Bestehende Sets extrahieren und neue anhängen
+        existing_sets = lines[-1].strip().split(',', 1)[1].strip('"')
+        lines[-1] = f'{today},"{existing_sets},{req.sets}"\n'
         
-    with csv_path.open("a", encoding="utf-8") as f:
-        f.write(line)
-        
-    return FitnessLogResponse(ok=True)
+        # Komplette Datei mit aktualisierter letzter Zeile überschreiben
+        with csv_path.open("w", encoding="utf-8") as f:
+            f.writelines(lines)
+    else:
+        # Neue Datei anlegen oder neue Zeile anhängen
+        if not csv_path.exists():
+            csv_path.write_text('date,sets\n', encoding="utf-8")
+            
+        with csv_path.open("a", encoding="utf-8") as f:
+            f.write(f'{today},"{req.sets}"\n')
 
 
 @app.post("/api/photos/upload", response_model=UploadResponse)
