@@ -12,6 +12,7 @@ import tempfile
 import shutil
 
 from PIL import Image, ImageOps
+import pillow_heif
 
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
@@ -584,6 +585,8 @@ def fitness_log(req: FitnessLogRequest):
 
 @app.post("/api/photos/upload", response_model=UploadResponse)
 async def upload_photos(files: List[UploadFile] = File(...)):
+
+    pillow_heif.register_heif_opener()
     dt = datetime.now().astimezone()
     batch_dir = PHOTOS_INBOX_DIR / batch_folder_name(dt)
     batch_dir.mkdir(parents=True, exist_ok=True)
@@ -605,6 +608,29 @@ async def upload_photos(files: List[UploadFile] = File(...)):
                 if not chunk:
                     break
                 w.write(chunk)
+
+# HEIC → JPG convert (share compat)
+        ext = out_path.suffix.lower()
+        if ext in [".heic", ".heif"]:
+            with Image.open(out_path) as im:
+                # 1. EXIF-Daten direkt beim Öffnen sichern
+                exif_data = im.info.get("exif")
+                
+                im = ImageOps.exif_transpose(im)
+                im = im.convert("RGB")
+                
+                jpg_filename = f"{out_path.stem}.jpg"
+                jpg_name = unique_filename(prefix, jpg_filename)
+                jpg_path = batch_dir / jpg_name
+                
+                # 2. EXIF-Daten beim Speichern wieder einfügen
+                if exif_data:
+                    im.save(jpg_path, 'JPEG', quality=92, optimize=True, progressive=True, exif=exif_data)
+                else:
+                    im.save(jpg_path, 'JPEG', quality=92, optimize=True, progressive=True)
+                    
+            out_path.unlink()  # Remove HEIC
+            out_path = jpg_path  # Use JPG
 
         # 2) Compute hash and dedupe
         try:
