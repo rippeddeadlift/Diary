@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CounterTracker } from '@/components/fitness/CounterTracker'
 import { MiniWeekBars } from '@/components/fitness/MiniWeekBars'
 import { formatDateEU, getTodayISO, loadSetsCsv, type SetsRow } from '@/data/setsCsv'
-import { LogCard } from '@/components/fitness/LogCard'
 
 type FitnessView = 'dashboard' | 'dips' | 'pullups'
 
@@ -36,12 +35,7 @@ export function FitnessPage() {
     )
   }
 
-  return (
-    <div className="space-y-6">
-      <LogCard onLogged={refresh} />
-      <FitnessDashboard onOpenDips={() => setView('dips')} onOpenPullups={() => setView('pullups')} />
-    </div>
-  )
+  return <FitnessDashboard onOpenDips={() => setView('dips')} onOpenPullups={() => setView('pullups')} />
 }
 
 function FitnessDashboard({ onOpenDips, onOpenPullups }: { onOpenDips: () => void; onOpenPullups: () => void }) {
