@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Trip } from '@/data/trips'
 import { TripList } from '@/components/TripList'
 import { TripView } from '@/components/TripView'
@@ -48,6 +48,7 @@ function compareTrips(a: Trip, b: Trip, sort: SortKey): number {
 }
 
 export function ToursPage({ trips, onReload }: { trips: Trip[]; onReload: () => Promise<void> }) {
+
   const [view, setView] = useState<ToursView>({ kind: 'list' })
   const [activity, setActivity] = useState<Activity>('all')
   const [sort, setSort] = useState<SortKey>('date_desc')
@@ -57,7 +58,11 @@ export function ToursPage({ trips, onReload }: { trips: Trip[]; onReload: () => 
     const sorted = [...filtered].sort((a, b) => compareTrips(a, b, sort))
     return sorted
   }, [activity, sort, trips])
-
+  useEffect(() => {
+    if (view.kind === 'list') {
+      onReload() 
+    }
+  }, [view.kind, onReload])  
   if (view.kind === 'trip') {
     return (
       <TripView
