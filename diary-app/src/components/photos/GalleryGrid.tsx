@@ -93,7 +93,7 @@ export function GalleryGrid({
                       role="button"
                       tabIndex={0}
                       className={cn(
-                       "block cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring rounded overflow-hidden",
+                        "block cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring rounded overflow-hidden",
                         selectionMode ? "hover:bg-muted/50" : ""
                       )}
                       onClick={() => selectionMode ? onToggleSelect(it) : onSelect(it)}
@@ -109,17 +109,20 @@ export function GalleryGrid({
 
                     {/* Hover/selection circle (precise toggle, always hover-visible) */}
                     <button
-  type="button"
-  onClick={(e) => {
-    e.stopPropagation()
-    onToggleSelect(it)
-  }}
-  className={cn(
-    "absolute right-2 top-2 z-20 flex h-8 w-8 items-center justify-center rounded-full border-2 shadow-md backdrop-blur transition-all duration-200",
-    selectionMode
-      ? "scale-110 border-black/90 bg-black/80 text-white opacity-100 shadow-xl group-hover:bg-white/80" 
-      : "opacity-0 group-hover:opacity-100 bg-black/50 border-black  text-black" 
-  )}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onToggleSelect(it)
+                      }}
+className={cn(
+                        "absolute right-2 top-2 z-20 flex h-8 w-8 items-center justify-center rounded-full border-2 shadow-md backdrop-blur transition-all duration-200",
+                        selectionMode
+                          ? [
+                              "scale-110 border-black/90 bg-black/80 opacity-100 shadow-xl group-hover:bg-white/80",
+                              isSelected ? "group-hover:text-black":""
+                            ]
+                          : "opacity-0 group-hover:opacity-100 bg-black/50 border-black text-black"
+                      )}
                       aria-label={isSelected ? 'Auswahl entfernen' : 'Auswählen'}
                       title={isSelected ? 'Auswahl entfernen' : 'Auswählen'}
                     >
