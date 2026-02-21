@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-# Google Photos Takeout Backfill: fill createdAt from Takeout JSON timestamps
-# Usage: cd Diary; python tools/google_takeout_backfill.py /path/to/Takeout/Google\\ Photos/JSON/
-# Matches JSON 'title' (IMG_7316.JPG) to data/photos/inbox/*/*.JPG sidecar
-# Sets createdAt from 'photoTakenTime.timestamp' (unix sec → ISO UTC)
+# Google Photos Takeout Backfill: fill createdAt and location from Takeout JSON timestamps
+# Usage: cd Diary; python tools/google_takeout_backfill.py /path/to/Takeout/Google\ Photos/JSON/
+# python tools/google_takeout_backfill.py "C:\Users\ivank\Downloads\GOOGLEFOTOS\Takeout"
 
 import glob
 import json
@@ -18,7 +17,7 @@ def unix_sec_to_iso(ts_sec: str) -> str:
     return dt.isoformat(timespec='seconds') + 'Z'
 
 if len(sys.argv) != 2:
-    print('Usage: python tools/google_takeout_backfill.py \"C:\\Users\\ivank\\Downloads\\test\"')
+    print('Usage: python tools/google_takeout_backfill.py "C:\\Users\\ivank\\Downloads\\test"')
     sys.exit(1)
 
 takeout_root = Path(sys.argv[1]).resolve()
@@ -26,7 +25,7 @@ if not takeout_root.exists():
     print(f'Error: {takeout_root} not found')
     sys.exit(1)
 
-fixed = skipped_has_date = skipped_no_title = skipped_no_ts = no_match = errors = 0
+fixed = skipped_has_date_and_loc = skipped_no_title = skipped_no_ts = no_match = errors = 0
 
 for json_path in takeout_root.rglob('*.json'):
     try:
@@ -34,32 +33,36 @@ for json_path in takeout_root.rglob('*.json'):
         title = data.get('title', '')
         if not title:
             skipped_no_title += 1
-            print(f'Skipped no title: {json_path.name}')
             continue
 
         # Extract ID: IMG_7994.JPG → '7994'
         match = re.search(r'IMG_(\d+)\.', title)
         if not match:
             skipped_no_title += 1
-            print(f'Skipped no IMG_ID in title \'{title}\': {json_path.name}')
             continue
+            
         photo_id = match.group(1)
-        print(f'Processing {json_path.name} → ID \'{photo_id}\' (title \'{title}\')')
 
         candidates = glob.glob(str(DATA_INBOX / '**' / f'*IMG_{photo_id}*.jp*g'), recursive=True)
         if not candidates:
             no_match += 1
             continue
 
-        # 1. Erst prüfen, ob das Takeout-JSON überhaupt ein Datum liefert
+        # 1. Daten aus dem Takeout JSON extrahieren
         photo_time = data.get('photoTakenTime', {}) or data.get('creationTime', {})
         ts_sec = photo_time.get('timestamp')
+        
+        geo_data = data.get('geoData', {})
+        lat = geo_data.get('latitude')
+        lon = geo_data.get('longitude')
+        
         if not ts_sec:
             skipped_no_ts += 1
-            continue # Kein Timestamp, wir können dieses JSON komplett ignorieren
+            continue
 
-        # 2. Jetzt alle gefundenen Duplikate durchgehen und Datum eintragen
-        applied = False
+        # 2. Alle gefundenen Bilder in deiner Inbox durchgehen
+        applied_to_any = False
+        
         for cand in candidates:
             photo_path = Path(cand)
             sidecar_path = photo_path.with_name(photo_path.name + '.json')
@@ -68,60 +71,42 @@ for json_path in takeout_root.rglob('*.json'):
                 continue
 
             sidecar_data = json.loads(sidecar_path.read_text(encoding='utf-8'))
+            needs_save = False
             
-            # Wenn dieses Bild schon ein Datum hat, prüfen wir das nächste Duplikat
-            if sidecar_data.get('createdAt'):
-                continue
+            # A) Datum prüfen und ggf. eintragen
+            if not sidecar_data.get('createdAt'):
+                sidecar_data['createdAt'] = unix_sec_to_iso(ts_sec)
+                sidecar_data['createdAtSource'] = 'google_takeout'
+                needs_save = True
+                
+            # B) Location prüfen und ggf. eintragen (nur wenn Google echte Koordinaten liefert)
+            if lat and lon and (abs(lat) > 0.001 or abs(lon) > 0.001):
+                if not sidecar_data.get('location'):
+                    sidecar_data['location'] = {
+                        'lat': lat,
+                        'lon': lon,
+                        'source': 'google_takeout'
+                    }
+                    needs_save = True
 
-            # Wir haben ein Bild ohne Datum gefunden!
-            sidecar_data['createdAt'] = unix_sec_to_iso(ts_sec)
-            sidecar_data['createdAtSource'] = 'google_takeout'
-            sidecar_path.write_text(json.dumps(sidecar_data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-            print(f'✓ Fixed {photo_path.name}: {ts_sec} -> {sidecar_data["createdAt"]}')
-            fixed += 1
-            applied = True
-            break # Erfolgreich eingetragen, wir können mit dem nächsten JSON weitermachen
+            # Wenn wir etwas geändert haben -> Speichern!
+            if needs_save:
+                sidecar_path.write_text(json.dumps(sidecar_data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+                print(f'✓ Updated {photo_path.name} (Date/Location from Takeout)')
+                fixed += 1
+                applied_to_any = True
 
-        if not applied:
-            # Kein passendes Bild ohne Datum gefunden
-            skipped_has_date += 1
-            print(f'  Skipped: Alle {len(candidates)} Bilder mit ID {photo_id} haben bereits ein Datum oder keinen Sidecar')
-        photo_path = Path(candidates[0])
-        print(f'  Match: {photo_path}')
-        sidecar_path = photo_path.with_name(photo_path.name + '.json')
-        if not sidecar_path.exists():
-            print(f'  No sidecar: {sidecar_path}')
-            no_match += 1
-            continue
+        if not applied_to_any:
+            skipped_has_date_and_loc += 1
 
-        sidecar_data = json.loads(sidecar_path.read_text(encoding='utf-8'))
-        if sidecar_data.get('createdAt'):
-            skipped_has_date += 1
-            print(f'  Skipped (has date): {sidecar_data["createdAt"]}')
-            continue
-
-        # Prefer photoTakenTime, fallback creationTime
-        photo_time = data.get('photoTakenTime', {}) or data.get('creationTime', {})
-        ts_sec = photo_time.get('timestamp')
-        if not ts_sec:
-            skipped_no_ts += 1
-            print(f'  Skipped no timestamp')
-            continue
-
-        sidecar_data['createdAt'] = unix_sec_to_iso(ts_sec)
-        sidecar_data['createdAtSource'] = 'google_takeout'
-        sidecar_path.write_text(json.dumps(sidecar_data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-        print(f'✓ Fixed {photo_path.name} ({photo_path.parent.name}): {ts_sec} → {sidecar_data["createdAt"]}')
-        fixed += 1
     except Exception as e:
         print(f'✗ Error {json_path}: {e}')
         errors += 1
 
 print(f'\n=== SUMMARY ===')
-print(f'Fixed: {fixed}')
-print(f'Skipped (already has date): {skipped_has_date}')
+print(f'Updated sidecars: {fixed}')
+print(f'Skipped (no update needed): {skipped_has_date_and_loc}')
 print(f'Skipped (no title/ID): {skipped_no_title}')
 print(f'Skipped (no timestamp): {skipped_no_ts}')
 print(f'No matching photo/sidecar: {no_match}')
 print(f'Errors: {errors}')
-print(f'Total JSONs scanned: {fixed + skipped_has_date + skipped_no_title + skipped_no_ts + no_match + errors}')

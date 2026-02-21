@@ -15,10 +15,16 @@ import { useBulkTagging } from '@/hooks/useBulkTagging'
 import { PEOPLE, PHOTO_TAGS } from '@/data/tagConfig'
 import type { Person, PhotoTag } from '@/data/tagConfig'
 import { trashPhotos } from '@/api/photos'
+import { cn } from '@/lib/utils'
 
 export function PhotosPage() {
   const { items: gallery, error: galleryErr, reload: loadGallery } = useGallery()
+  const [showOnlyWithLocation, setShowOnlyWithLocation] = useState(false);
 
+  // Die gefilterten Items berechnen
+  const filteredItemsWithLoc = showOnlyWithLocation
+    ? gallery.filter(it => it.location && it.location.lat && it.location.lon)
+    : gallery;
   const [viewerIndex, setViewerIndex] = useState<number | null>(null)
   const [bulkOpen, setBulkOpen] = useState(false)
 
@@ -37,6 +43,11 @@ export function PhotosPage() {
 
   const filtered = useMemo(() => {
     return gallery.filter((it) => {
+      // 📍 NEU: Standort-Check (zuerst, da er am schnellsten filtert)
+      if (showOnlyWithLocation && (!it.location?.lat || !it.location?.lon)) {
+        return false
+      }
+
       const people = it.people ?? []
       const tags = it.tags ?? []
 
@@ -49,7 +60,7 @@ export function PhotosPage() {
 
       return true
     })
-  }, [gallery, peopleFilter, tagFilter, tagState])
+  }, [gallery, peopleFilter, tagFilter, tagState, showOnlyWithLocation]) // Dependency hinzugefügt
 
   return (
     <div className="space-y-4">
@@ -84,6 +95,7 @@ export function PhotosPage() {
                     setPeopleFilter([])
                     setTagFilter([])
                     setTagState('all')
+                    setShowOnlyWithLocation(false) // 📍 Hinzugefügt
                   }}
                 >
                   Zurücksetzen
@@ -113,6 +125,19 @@ export function PhotosPage() {
                     : tagState === 'untagged'
                       ? 'keine tags'
                       : 'mind. 1 tag'}
+                </button>
+              </div>
+              <div className="pt-2 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowOnlyWithLocation(!showOnlyWithLocation)}
+                  className={cn(
+                    "text-sm transition-colors flex items-center gap-2",
+                    showOnlyWithLocation ? "text-primary font-bold" : "text-muted-foreground underline"
+                  )}
+                >
+                  <span>📍</span>
+                  {showOnlyWithLocation ? 'Nur mit Standort' : 'Standort egal'}
                 </button>
               </div>
             </div>
