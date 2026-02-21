@@ -15,7 +15,7 @@ export function PhotoUploadCard({ onUploaded }: { onUploaded: () => Promise<void
   const [result, setResult] = useState<UploadResult | null>(null)
   const [uploaded, setUploaded] = useState(0)
   const [dupSkipped, setDupSkipped] = useState(0)
-  const batchSize = 10;
+  const batchSize = 150;
   const fileCount = useMemo(() => (files ? files.length : 0), [files])
   const singleZip = useMemo(() => {
     if (!files || files.length !== 1) return null
@@ -51,14 +51,20 @@ export function PhotoUploadCard({ onUploaded }: { onUploaded: () => Promise<void
       let last: UploadResult | null = null
 
       for (let i = 0; i < batches.length; i++) {
-        const batch = batches[i]
-        const json = await uploadPhotos(batch)
-        last = json
-        totalSaved += json.count ?? 0
-        totalDup += json.duplicatesSkipped ?? 0
+        try {
+          const batch = batches[i]
+          const json = await uploadPhotos(batch)
+          last = json
+          totalSaved += json.count ?? 0
+          totalDup += json.duplicatesSkipped ?? 0
 
-        setUploaded((i + 1) * batchSize > all.length ? all.length : (i + 1) * batchSize)
-        setDupSkipped(totalDup)
+          setUploaded((i + 1) * batchSize > all.length ? all.length : (i + 1) * batchSize)
+          setDupSkipped(totalDup)
+        } catch (err) {
+          console.error(`Batch ${i} fehlgeschlagen:`, err);
+          continue;
+        }
+
       }
 
       setResult({ ok: true, batch: last?.batch, count: totalSaved, duplicatesSkipped: totalDup })

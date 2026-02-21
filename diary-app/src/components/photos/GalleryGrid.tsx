@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { useWindowVirtualizer } from '@tanstack/react-virtual'
 
 import type { GalleryItem } from '@/types/photos'
@@ -40,7 +40,79 @@ function LazyThumb({ url, alt }: { url: string; alt: string }) {
     </div>
   )
 }
+const PhotoCard = memo(({
+  it, isSelected, imgUrl, selectionMode, onToggleSelect, onSelect
+}: {
+  it: GalleryItem; isSelected: boolean; imgUrl: string;
+  selectionMode: boolean; onToggleSelect: (it: GalleryItem) => void; onSelect: (it: GalleryItem) => void
+}) => {
+  const [src, setSrc] = useState<string | undefined>(undefined)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSrc(imgUrl)
+    }, 250) // 150ms Puffer
 
+    // Wenn das Bild aus dem sichtbaren Bereich verschwindet, brich den Timer ab
+    return () => clearTimeout(timer)
+  }, [imgUrl])
+  return (
+    <div className="group relative transition-all">
+      {/* Tile clickable */}
+      <div
+        role="button"
+        tabIndex={0}
+        className={cn(
+          "block cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring rounded overflow-hidden",
+          selectionMode ? "hover:bg-muted/50" : ""
+        )}
+        onClick={() => selectionMode ? onToggleSelect(it) : onSelect(it)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            selectionMode ? onToggleSelect(it) : onSelect(it)
+          }
+        }}
+      >
+        <img
+          src={src}
+          alt={src ? it.path : ""} // <-- Nur anzeigen, wenn src geladen wird
+          decoding="async"
+          className={cn(
+            "block aspect-square w-full object-cover bg-muted transition-opacity duration-300",
+            src ? "opacity-100" : "opacity-0"
+          )}
+        />
+      </div>
+
+      {/* Hover/selection circle */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          onToggleSelect(it)
+        }}
+        className={cn(
+          "absolute right-2 top-2 z-20 flex h-8 w-8 items-center justify-center rounded-full border-2 shadow-md backdrop-blur transition-all duration-200",
+          selectionMode
+            ? [
+              "scale-110 border-black/90 bg-black/80 opacity-100 shadow-xl group-hover:bg-white/80",
+              isSelected ? "group-hover:text-black" : ""
+            ]
+            : "opacity-0 group-hover:opacity-100 bg-black/50 border-black text-black"
+        )}
+        aria-label={isSelected ? 'Auswahl entfernen' : 'Auswählen'}
+        title={isSelected ? 'Auswahl entfernen' : 'Auswählen'}
+      >
+        {isSelected ? '✓' : ''}
+      </button>
+
+      <div className="flex items-center justify-between gap-2 p-2 text-xs text-muted-foreground">
+        {it.tags?.length || it.people?.length ? null : <span>0 tags</span>}
+        {it.createdAt ? <span className="font-mono">{formatDateTimeEU(it.createdAt)}</span> : null}
+      </div>
+    </div>
+  )
+})
 export function GalleryGrid({
   items,
   onSelect,
@@ -61,7 +133,7 @@ export function GalleryGrid({
   const rowVirtualizer = useWindowVirtualizer({
     count: rowCount,
     estimateSize: () => 280,
-    overscan: 3
+    overscan: 2  
   })
 
   const virtualRows = rowVirtualizer.getVirtualItems()
@@ -82,58 +154,24 @@ export function GalleryGrid({
             className="absolute left-0 w-full"
             style={{ transform: `translateY(${vr.start}px)` }}
           >
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            <div
+              className="grid gap-2 w-full"
+              style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+            >
               {rowItems.map((it) => {
                 const isSelected = selected.has(it.path)
                 const imgUrl = it.thumbExists && it.thumbUrl ? it.thumbUrl : it.url
+
                 return (
-                  <div key={it.path} className="group relative transition-all ">
-                    {/* Tile clickable */}
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      className={cn(
-                        "block cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring rounded overflow-hidden",
-                        selectionMode ? "hover:bg-muted/50" : ""
-                      )}
-                      onClick={() => selectionMode ? onToggleSelect(it) : onSelect(it)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          selectionMode ? onToggleSelect(it) : onSelect(it)
-                        }
-                      }}
-                    >
-                      <LazyThumb url={imgUrl} alt={it.path} />
-                    </div>
-
-                    {/* Hover/selection circle (precise toggle, always hover-visible) */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onToggleSelect(it)
-                      }}
-                      className={cn(
-                        "absolute right-2 top-2 z-20 flex h-8 w-8 items-center justify-center rounded-full border-2 shadow-md backdrop-blur transition-all duration-200",
-                        selectionMode
-                          ? [
-                            "scale-110 border-black/90 bg-black/80 opacity-100 shadow-xl group-hover:bg-white/80",
-                            isSelected ? "group-hover:text-black" : ""
-                          ]
-                          : "opacity-0 group-hover:opacity-100 bg-black/50 border-black text-black"
-                      )}
-                      aria-label={isSelected ? 'Auswahl entfernen' : 'Auswählen'}
-                      title={isSelected ? 'Auswahl entfernen' : 'Auswählen'}
-                    >
-                      {isSelected ? '✓' : ''}
-                    </button>
-
-                    <div className="flex items-center justify-between gap-2 p-2 text-xs text-muted-foreground">
-                      {it.tags?.length || it.people?.length ? null : <span>0 tags</span>}
-                      {it.createdAt ? <span className="font-mono">{formatDateTimeEU(it.createdAt)}</span> : null}
-                    </div>
-                  </div>
+                  <PhotoCard
+                    key={it.path}
+                    it={it}
+                    isSelected={isSelected}
+                    imgUrl={imgUrl}
+                    selectionMode={selectionMode}
+                    onToggleSelect={onToggleSelect}
+                    onSelect={onSelect}
+                  />
                 )
               })}
             </div>
