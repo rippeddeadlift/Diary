@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import type { Trip } from '../../data/trips'
-import { loadTripGpx } from '../../data/trips'
+import type { Trip } from '@/data/trips'
+import { loadTripGpx } from '@/data/trips'
 import { LeafletMap } from './LeafletMap'
 import { Card, CardContent } from '@/components/ui/card'
 

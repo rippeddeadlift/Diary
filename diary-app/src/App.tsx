@@ -4,11 +4,11 @@ import { Button } from '@/components/ui/button'
 import { PhotosPage } from '@/features/photos/PhotosPage'
 import { MenuPage } from '@/pages/MenuPage'
 import { FitnessPage } from '@/pages/FitnessPage'
-import { ToursPage } from '@/pages/ToursPage'
+import { TripsPage } from '@/features/trips/TripsPage'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Toaster } from 'sonner'
 
-type Page = 'menu' | 'photos' | 'tours' | 'fitness'
+type Page = 'menu' | 'photos' | 'trips' | 'fitness'
 
 export default function App() {
   // ALT: trips und error State komplett entfernt
@@ -19,13 +19,13 @@ export default function App() {
   const subtitle = useMemo(() => {
     if (page === 'menu') return 'Menü'
     if (page === 'photos') return 'Fotos'
-    if (page === 'tours') return 'Touren'
+    if (page === 'trips') return 'Touren'
     return 'Fitness'
   }, [page])
 
   const goMenu = () => setPage('menu')
   const goPhotos = () => setPage('photos')
-  const goTours = () => setPage('tours')
+  const goTrips = () => setPage('trips')
   const goFitness = () => setPage('fitness')
 
   const isMenu = page === 'menu'
@@ -50,13 +50,13 @@ export default function App() {
           </header>
 
          {page === 'menu' ? (
-        <MenuPage onTours={goTours} onPhotos={goPhotos} onFitness={goFitness} />
+        <MenuPage onTrips={goTrips} onPhotos={goPhotos} onFitness={goFitness} />
       ) : page === 'photos' ? (
         <PhotosPage />
       ) : page === 'fitness' ? (
         <FitnessPage />
       ) : (
-        <ToursPage />
+        <TripsPage />
       )}
         </div>
       </div>

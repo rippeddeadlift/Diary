@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Trip } from '@/data/trips'
-import { TripList } from '@/components/TripList'
-import { TripView } from '@/components/TripView'
-import { TripsImportCard } from '@/components/trips/TripsImportCard'
-import { FilterBar } from '@/components/FilterBar'
+import { TripList } from './components/TripList'
+import { TripView } from './components/TripView'
+import { TripsImportCard } from './components/TripsImportCard'
+import { FilterBar } from './components/FilterBar'
 import { TRIP_ACTIVITY_TAGS, type TripActivityTag } from '@/data/tagConfig'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { syncTrips } from '@/lib/dexie_do/trips'
 import { db } from '@/lib/dexie_do/schema'
 
-type ToursView = { kind: 'list' } | { kind: 'trip'; trip: Trip }
+type TripsView = { kind: 'list' } | { kind: 'trip'; trip: Trip }
 
 type Activity = 'all' | 'unknown' | TripActivityTag
 
@@ -50,7 +50,7 @@ function compareTrips(a: Trip, b: Trip, sort: SortKey): number {
   return b.meta.date.localeCompare(a.meta.date)
 }
 
-export function ToursPage() {
+export function TripsPage() {
   const localTrips = useLiveQuery(() => db.trips.toArray()) || []
 
   const handleReload = async () => {
@@ -61,7 +61,7 @@ export function ToursPage() {
     handleReload()
   }, [])
 
-  const [view, setView] = useState<ToursView>({ kind: 'list' })
+  const [view, setView] = useState<TripsView>({ kind: 'list' })
   const [activity, setActivity] = useState<Activity>('all')
   const [sort, setSort] = useState<SortKey>('date_desc')
 

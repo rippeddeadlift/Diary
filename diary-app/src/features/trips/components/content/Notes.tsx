@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import type { Trip } from '../../data/trips'
-import { loadTripNotes } from '../../data/trips'
+import type { Trip } from '@/data/trips'
+import { loadTripNotes } from '@/data/trips'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export function Notes({ trip }: { trip: Trip }) {

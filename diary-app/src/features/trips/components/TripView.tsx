@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { GpxMap } from './maps/GpxMap'
 import { Notes } from './content/Notes'
-import { TripPhotoSuggestions } from '@/components/trips/TripPhotoSuggestions'
-import type { Trip } from '../data/trips'
-import { Button } from './ui/button'
+import { TripPhotoSuggestions } from './TripPhotoSuggestions'
+import type { Trip } from '@/data/trips'
+import { Button } from '@/components/ui/button'
 import { formatDateEU } from '@/lib/date'
 import { trashTrips, updateTripMeta } from '@/api/trips'
 import {

@@ -1,16 +1,16 @@
 export function MenuPage({
-  onTours,
+  onTrips,
   onPhotos,
   onFitness
 }: {
-  onTours: () => void
+  onTrips: () => void
   onPhotos: () => void
   onFitness: () => void
 }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-10 py-10 text-center overflow-hidden">
       <MenuItem title="FOTOS" onClick={onPhotos} />
-      <MenuItem title="TOUREN" onClick={onTours} />
+      <MenuItem title="TOUREN" onClick={onTrips} />
       <MenuItem title="FITNESS" onClick={onFitness} />
     </div>
   )
