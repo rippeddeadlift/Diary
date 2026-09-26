@@ -46,12 +46,6 @@ npm test -- --run
 Create folder: `trips/YYYY-MM-DD-something/`
 
 Required files:
-- `meta.json` (see example)
 - `route.gpx`
-- `notes.md` (optional)
-- `photos/` (optional)
 
-Then add it to `trips/index.json`.
-
-(We can later automate index generation.)
 
