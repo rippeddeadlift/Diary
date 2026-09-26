@@ -11,7 +11,7 @@ export function RoutePreview({
 }) {
   if (!points || points.length < 2) return null
 
-  const [minLat, minLon, maxLat, maxLon] = bbox
+  const [minLat, , maxLat, ] = bbox
 
   // Rough projection: lon scaled by cos(mid-lat) to reduce horizontal distortion.
   const midLat = (minLat + maxLat) / 2

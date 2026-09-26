@@ -257,6 +257,15 @@ def suggest_photos(date: str, bbox: str | None = None, limit: int = 200):
         people = [str(x) for x in people if x is not None and str(x).strip()]
         tags = [str(x) for x in tags if x is not None and str(x).strip()]
 
+        # Location parsen, falls vorhanden und gültig
+        loc_data = sc.get("location")
+        location_val = None
+        if isinstance(loc_data, dict) and "lat" in loc_data and "lon" in loc_data:
+            try:
+                location_val = {"lat": float(loc_data["lat"]), "lon": float(loc_data["lon"])}
+            except (ValueError, TypeError):
+                pass
+
         items.append(
             GalleryItem(
                 path=rel,
@@ -269,7 +278,7 @@ def suggest_photos(date: str, bbox: str | None = None, limit: int = 200):
                 tags=tags,
                 createdAt=str(created_at),
                 createdAtSource=str(sc.get("createdAtSource") or "exif"),
-                location=None,
+                location=location_val, # <-- Hier den ermittelten Wert einsetzen
                 missing=False,
             )
         )
@@ -551,6 +560,33 @@ def update_trip_meta(req: TripMetaUpdateRequest):
 
     return TripMetaUpdateResponse(ok=True)
 
+@app.get("/api/trips/meta")
+def get_all_trips_meta():
+    if not TRIPS_INDEX.exists():
+        return []
+
+    # 1. Die Haupt-Index Datei lesen
+    idx = json.loads(TRIPS_INDEX.read_text(encoding="utf-8"))
+    trips_list = idx.get("trips", [])
+
+    full_data = []
+    
+    # 2. Für jede Tour die zugehörige meta.json laden
+    for t in trips_list:
+        trip_id = t.get("id")
+        trip_path = t.get("path")
+        
+        meta_file = TRIPS_DIR / trip_path / "meta.json"
+        if meta_file.exists():
+            meta_content = json.loads(meta_file.read_text(encoding="utf-8"))
+            full_data.append({
+                "id": trip_id,
+                "path": trip_path,
+                "meta": meta_content
+            })
+    
+    # 3. Das Ergebnis ist ein Array von Trips, genau wie Dexie es erwartet
+    return full_data
 
 @app.post("/api/fitness/log", response_model=FitnessLogResponse)
 def fitness_log(req: FitnessLogRequest):

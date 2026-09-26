@@ -8,14 +8,12 @@ import { PEOPLE, PHOTO_TAGS } from '@/data/tagConfig'
 import { TagChips } from '@/components/photos/TagChips'
 import { Switch } from '@/components/ui/switch'
 
-type Sidecar = {
-  people: string[]
-  tags: string[]
-  caption: string
-}
+
 
 function MapBlock({ lat, lon }: { lat: number; lon: number }) {
   const [showMap, setShowMap] = useState(false)
+  console.debug('MapBlock render', { lat, lon })
+  console.debug('MapBlock showMap', showMap)
 
   useEffect(() => {
     const t = window.setTimeout(() => setShowMap(true), 200)

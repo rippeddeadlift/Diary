@@ -42,7 +42,7 @@ export function TripsImportCard({ onImported }: { onImported: () => Promise<void
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          Workflow: Komoot öffnen → GPX herunterladen (landet in Downloads) → Import klicken.
+          Workflow: Komoot öffnen → GPX herunterladen  → GPX aus Downloads importieren.
         </p>
 
         <a className="text-sm underline" href={KOMOOT_ACTIVITIES_URL} target="_blank" rel="noreferrer">

@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useEffect,  useState } from 'react'
 import { useWindowVirtualizer } from '@tanstack/react-virtual'
 
 import type { GalleryItem } from '@/types/photos'
@@ -6,40 +6,7 @@ import { formatDateTimeEU } from '@/lib/format'
 import { useGalleryColumns } from '@/hooks/useGalleryColumns'
 import { cn } from '@/lib/utils'
 
-function LazyThumb({ url, alt }: { url: string; alt: string }) {
-  const ref = useRef<HTMLDivElement | null>(null)
-  const [show, setShow] = useState(false)
 
-  useEffect(() => {
-    if (show) return
-    const el = ref.current
-    if (!el) return
-
-    const obs = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) {
-            setShow(true)
-            obs.disconnect()
-            break
-          }
-        }
-      },
-      { root: null, rootMargin: '600px' }
-    )
-
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [show])
-
-  return (
-    <div ref={ref} className="block aspect-square w-full bg-muted">
-      {show ? (
-        <img src={url} alt={alt} loading="lazy" decoding="async" className="block aspect-square w-full object-cover" />
-      ) : null}
-    </div>
-  )
-}
 const PhotoCard = memo(({
   it, isSelected, imgUrl, selectionMode, onToggleSelect, onSelect
 }: {

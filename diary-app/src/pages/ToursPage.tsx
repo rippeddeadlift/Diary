@@ -5,6 +5,9 @@ import { TripView } from '@/components/TripView'
 import { TripsImportCard } from '@/components/trips/TripsImportCard'
 import { FilterBar } from '@/components/FilterBar'
 import { TRIP_ACTIVITY_TAGS, type TripActivityTag } from '@/data/tagConfig'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { syncTrips } from '@/lib/dexie_do/trips'
+import { db } from '@/lib/dexie_do/schema'
 
 type ToursView = { kind: 'list' } | { kind: 'trip'; trip: Trip }
 
@@ -47,29 +50,40 @@ function compareTrips(a: Trip, b: Trip, sort: SortKey): number {
   return b.meta.date.localeCompare(a.meta.date)
 }
 
-export function ToursPage({ trips, onReload }: { trips: Trip[]; onReload: () => Promise<void> }) {
+export function ToursPage() {
+  const localTrips = useLiveQuery(() => db.trips.toArray()) || []
+
+  const handleReload = async () => {
+    await syncTrips()
+  }
+
+  useEffect(() => {
+    handleReload()
+  }, [])
 
   const [view, setView] = useState<ToursView>({ kind: 'list' })
   const [activity, setActivity] = useState<Activity>('all')
   const [sort, setSort] = useState<SortKey>('date_desc')
 
   const visibleTrips = useMemo(() => {
-    const filtered = activity === 'all' ? trips : trips.filter((t) => tripHasActivity(t, activity))
+    const filtered = activity === 'all' ? localTrips : localTrips.filter((t) => tripHasActivity(t, activity))
     const sorted = [...filtered].sort((a, b) => compareTrips(a, b, sort))
     return sorted
-  }, [activity, sort, trips])
+  }, [activity, sort, localTrips])
+
   useEffect(() => {
     if (view.kind === 'list') {
-      onReload() 
+      handleReload() 
     }
-  }, [view.kind, onReload])  
+  }, [view.kind])  
+
   if (view.kind === 'trip') {
     return (
       <TripView
         trip={view.trip}
         onBack={() => setView({ kind: 'list' })}
         onDeleted={async () => {
-          await onReload()
+          await handleReload()
           setView({ kind: 'list' })
         }}
       />
@@ -78,7 +92,7 @@ export function ToursPage({ trips, onReload }: { trips: Trip[]; onReload: () => 
 
   return (
     <div className="space-y-4">
-      <TripsImportCard onImported={onReload} />
+      <TripsImportCard onImported={handleReload} />
 
       <FilterBar
         chips={[

@@ -1,48 +1,16 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { formatDateEU, getTodayISO, loadSetsCsv, type SetsRow } from '@/data/setsCsv'
+import { formatDateEU, getTodayISO, type SetsRow } from '@/data/setsCsv'
 
-export function CounterTracker({ title, csvPath }: { title: string; csvPath: string }) {
-  const [rows, setRows] = useState<SetsRow[]>([])
-  const [err, setErr] = useState<string | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-
-    const refresh = async () => {
-      try {
-        setErr(null)
-        const next = await loadSetsCsv(csvPath)
-        if (!cancelled) setRows(next)
-      } catch (e: any) {
-        if (!cancelled) setErr(e?.message ?? String(e))
-      }
-    }
-
-    refresh()
-
-    const id = window.setInterval(refresh, 5000)
-
-    const onVis = () => {
-      if (document.visibilityState === 'visible') refresh()
-    }
-    document.addEventListener('visibilitychange', onVis)
-
-    return () => {
-      cancelled = true
-      window.clearInterval(id)
-      document.removeEventListener('visibilitychange', onVis)
-    }
-  }, [csvPath])
-
+// NEU: Statt csvPath erwarten wir nun direkt die fertig berechneten "rows"
+export function CounterTracker({ title, rows }: { title: string; rows: SetsRow[] }) {
   const today = getTodayISO()
   const todayRow = useMemo(() => rows.find((r) => r.date === today), [rows, today])
   const todayTotal = todayRow?.total ?? 0
 
   return (
     <div className="space-y-4">
-      {err ? <div className="text-sm text-destructive">{err}</div> : null}
-
+      {/* Das UI bleibt exakt gleich, aber der ganze Fehler- und Polling-Code (useEffect) ist weg! */}
       <Card className="border-0 shadow-sm">
         <CardHeader>
           <CardTitle>{title}</CardTitle>

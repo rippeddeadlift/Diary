@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from "sonner"
+import { saveSet } from '@/lib/dexie_do/fitness'
 
 const EXERCISES = ['dips', 'pullups'] as const
 type Exercise = (typeof EXERCISES)[number]
@@ -20,19 +21,17 @@ export function LogCard({ onLogged }: LogCardProps) {
     if (!sets.trim()) return
     setBusy(true)
     try {
-      const res = await fetch('/api/fitness/log', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ exercise, sets: sets.trim() })
-      })
-      if (!res.ok) {
-        const text = await res.text()
-        throw new Error(text)
-      }
-      await onLogged()
+      // NEU: Wir schreiben direkt in die lokale DB. 
+      // Der String aus dem Input ("15") wird in eine Zahl umgewandelt.
+      await saveSet(exercise, Number(sets.trim()))
+      
+      // Löst das refresh() / syncFromCSV() in der Parent-Komponente aus
+      await onLogged() 
+      
       setSets('')
       toast.success('Sets geloggt!')
     } catch (e: any) {
+      console.error("error logging fitness", e)
       toast.error(e.message)
     } finally {
       setBusy(false)

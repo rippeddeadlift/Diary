@@ -12,7 +12,7 @@ import { SelectionBar } from '../photos/SelectionBar'
 export function TripPhotoSuggestions({ trip }: { trip: Trip }) {
   const [items, setItems] = useState<GalleryItem[]>([])
   const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState<string | null>(null)
+  const [_, setErr] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [viewerIndex, setViewerIndex] = useState<number | null>(null)
   const [bulkOpen, setBulkOpen] = useState(false)
@@ -43,10 +43,10 @@ export function TripPhotoSuggestions({ trip }: { trip: Trip }) {
     selectedPaths,
     reload: loadSuggestions
   })
-
+console.log('TripPhotoSuggestions render', { items })
+console.log('TripPhotoSuggestions render')
   // If nothing was found (or error), keep TripView clean: render nothing.
   if (loaded && !busy && items.length === 0) return null
-
   return (
     <div className="space-y-2">
       <div className="flex items-baseline justify-between gap-3">

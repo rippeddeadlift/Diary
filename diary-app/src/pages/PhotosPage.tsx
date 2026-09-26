@@ -21,10 +21,7 @@ export function PhotosPage() {
   const { items: gallery, error: galleryErr, reload: loadGallery } = useGallery()
   const [showOnlyWithLocation, setShowOnlyWithLocation] = useState(false);
 
-  // Die gefilterten Items berechnen
-  const filteredItemsWithLoc = showOnlyWithLocation
-    ? gallery.filter(it => it.location && it.location.lat && it.location.lon)
-    : gallery;
+
   const [viewerIndex, setViewerIndex] = useState<number | null>(null)
   const [bulkOpen, setBulkOpen] = useState(false)
 

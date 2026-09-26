@@ -2,6 +2,302 @@
   "version": 1,
   "trips": [
     {
+      "id": "2026-09-20-wandern",
+      "path": "2026-09-20-wandern"
+    },
+    {
+      "id": "2026-09-19-wandern",
+      "path": "2026-09-19-wandern"
+    },
+    {
+      "id": "2026-09-15-gravel-fahrt",
+      "path": "2026-09-15-gravel-fahrt"
+    },
+    {
+      "id": "2026-09-08-gravel-fahrt-2",
+      "path": "2026-09-08-gravel-fahrt-2"
+    },
+    {
+      "id": "2026-09-08-gravel-fahrt",
+      "path": "2026-09-08-gravel-fahrt"
+    },
+    {
+      "id": "2026-09-05-gravel-fahrt",
+      "path": "2026-09-05-gravel-fahrt"
+    },
+    {
+      "id": "2026-09-03-gravel-fahrt",
+      "path": "2026-09-03-gravel-fahrt"
+    },
+    {
+      "id": "2026-09-02-gravel-fahrt",
+      "path": "2026-09-02-gravel-fahrt"
+    },
+    {
+      "id": "2026-08-16-gravel-fahrt",
+      "path": "2026-08-16-gravel-fahrt"
+    },
+    {
+      "id": "2026-07-28-wandern-2",
+      "path": "2026-07-28-wandern-2"
+    },
+    {
+      "id": "2026-07-28-wandern",
+      "path": "2026-07-28-wandern"
+    },
+    {
+      "id": "2026-07-05-gravel-fahrt",
+      "path": "2026-07-05-gravel-fahrt"
+    },
+    {
+      "id": "2026-07-04-wandern",
+      "path": "2026-07-04-wandern"
+    },
+    {
+      "id": "2026-07-03-gravel-fahrt",
+      "path": "2026-07-03-gravel-fahrt"
+    },
+    {
+      "id": "2026-07-01-gravel-fahrt-2",
+      "path": "2026-07-01-gravel-fahrt-2"
+    },
+    {
+      "id": "2026-07-01-gravel-fahrt",
+      "path": "2026-07-01-gravel-fahrt"
+    },
+    {
+      "id": "2026-06-30-gravel-fahrt-2",
+      "path": "2026-06-30-gravel-fahrt-2"
+    },
+    {
+      "id": "2026-06-30-gravel-fahrt",
+      "path": "2026-06-30-gravel-fahrt"
+    },
+    {
+      "id": "2026-06-29-gravel-fahrt-3",
+      "path": "2026-06-29-gravel-fahrt-3"
+    },
+    {
+      "id": "2026-06-29-gravel-fahrt-2",
+      "path": "2026-06-29-gravel-fahrt-2"
+    },
+    {
+      "id": "2026-06-29-gravel-fahrt",
+      "path": "2026-06-29-gravel-fahrt"
+    },
+    {
+      "id": "2026-06-28-gravel-fahrt",
+      "path": "2026-06-28-gravel-fahrt"
+    },
+    {
+      "id": "2026-06-26-gravel-fahrt-2",
+      "path": "2026-06-26-gravel-fahrt-2"
+    },
+    {
+      "id": "2026-06-26-gravel-fahrt",
+      "path": "2026-06-26-gravel-fahrt"
+    },
+    {
+      "id": "2026-06-24-gravel-fahrt-2",
+      "path": "2026-06-24-gravel-fahrt-2"
+    },
+    {
+      "id": "2026-06-24-gravel-fahrt",
+      "path": "2026-06-24-gravel-fahrt"
+    },
+    {
+      "id": "2026-06-23-gravel-fahrt-2",
+      "path": "2026-06-23-gravel-fahrt-2"
+    },
+    {
+      "id": "2026-06-23-gravel-fahrt",
+      "path": "2026-06-23-gravel-fahrt"
+    },
+    {
+      "id": "2026-06-22-gravel-fahrt-2",
+      "path": "2026-06-22-gravel-fahrt-2"
+    },
+    {
+      "id": "2026-06-22-gravel-fahrt",
+      "path": "2026-06-22-gravel-fahrt"
+    },
+    {
+      "id": "2026-06-19-gravel-fahrt",
+      "path": "2026-06-19-gravel-fahrt"
+    },
+    {
+      "id": "2026-06-18-gravel-fahrt",
+      "path": "2026-06-18-gravel-fahrt"
+    },
+    {
+      "id": "2026-06-17-gravel-fahrt",
+      "path": "2026-06-17-gravel-fahrt"
+    },
+    {
+      "id": "2026-06-14-wandern",
+      "path": "2026-06-14-wandern"
+    },
+    {
+      "id": "2026-06-09-laufen",
+      "path": "2026-06-09-laufen"
+    },
+    {
+      "id": "2026-06-07-fahrradtour",
+      "path": "2026-06-07-fahrradtour"
+    },
+    {
+      "id": "2026-06-06-fahrradtour",
+      "path": "2026-06-06-fahrradtour"
+    },
+    {
+      "id": "2026-06-06-nach-erft-radweg",
+      "path": "2026-06-06-nach-erft-radweg"
+    },
+    {
+      "id": "2026-06-05-laufen",
+      "path": "2026-06-05-laufen"
+    },
+    {
+      "id": "2026-05-28-fahrradtour",
+      "path": "2026-05-28-fahrradtour"
+    },
+    {
+      "id": "2026-05-27-wandern",
+      "path": "2026-05-27-wandern"
+    },
+    {
+      "id": "2026-05-25-wandern",
+      "path": "2026-05-25-wandern"
+    },
+    {
+      "id": "2026-05-06-fahrradtour",
+      "path": "2026-05-06-fahrradtour"
+    },
+    {
+      "id": "2026-05-01-eislauf",
+      "path": "2026-05-01-eislauf"
+    },
+    {
+      "id": "2026-04-25-fahrradtour",
+      "path": "2026-04-25-fahrradtour"
+    },
+    {
+      "id": "2026-04-22-fahrradtour-2",
+      "path": "2026-04-22-fahrradtour-2"
+    },
+    {
+      "id": "2026-04-22-fahrradtour",
+      "path": "2026-04-22-fahrradtour"
+    },
+    {
+      "id": "2026-04-21-fahrradtour",
+      "path": "2026-04-21-fahrradtour"
+    },
+    {
+      "id": "2026-04-18-fahrradtour",
+      "path": "2026-04-18-fahrradtour"
+    },
+    {
+      "id": "2026-04-17-fahrradtour",
+      "path": "2026-04-17-fahrradtour"
+    },
+    {
+      "id": "2026-04-08-column-storing-materialized-views",
+      "path": "2026-04-08-column-storing-materialized-views"
+    },
+    {
+      "id": "2026-03-20-aktivitt",
+      "path": "2026-03-20-aktivitt"
+    },
+    {
+      "id": "2026-03-19-wandern",
+      "path": "2026-03-19-wandern"
+    },
+    {
+      "id": "2026-03-19-aktivitt",
+      "path": "2026-03-19-aktivitt"
+    },
+    {
+      "id": "2026-03-18-aktivitt-2",
+      "path": "2026-03-18-aktivitt-2"
+    },
+    {
+      "id": "2026-03-18-aktivitt",
+      "path": "2026-03-18-aktivitt"
+    },
+    {
+      "id": "2026-03-17-aktivitt-3",
+      "path": "2026-03-17-aktivitt-3"
+    },
+    {
+      "id": "2026-03-17-aktivitt-2",
+      "path": "2026-03-17-aktivitt-2"
+    },
+    {
+      "id": "2026-03-17-aktivitt",
+      "path": "2026-03-17-aktivitt"
+    },
+    {
+      "id": "2026-03-16-aktivitt-2",
+      "path": "2026-03-16-aktivitt-2"
+    },
+    {
+      "id": "2026-03-16-aktivitt",
+      "path": "2026-03-16-aktivitt"
+    },
+    {
+      "id": "2026-03-15-aktivitt",
+      "path": "2026-03-15-aktivitt"
+    },
+    {
+      "id": "2026-03-15-wandern",
+      "path": "2026-03-15-wandern"
+    },
+    {
+      "id": "2026-03-09-fahrradtour",
+      "path": "2026-03-09-fahrradtour"
+    },
+    {
+      "id": "2026-03-05-fahrradtour-2",
+      "path": "2026-03-05-fahrradtour-2"
+    },
+    {
+      "id": "2026-03-05-wandern",
+      "path": "2026-03-05-wandern"
+    },
+    {
+      "id": "2026-03-05-fahrradtour",
+      "path": "2026-03-05-fahrradtour"
+    },
+    {
+      "id": "2026-03-03-laufen",
+      "path": "2026-03-03-laufen"
+    },
+    {
+      "id": "2026-03-01-fahrradtour",
+      "path": "2026-03-01-fahrradtour"
+    },
+    {
+      "id": "2026-02-27-docs-tour-2",
+      "path": "2026-02-27-docs-tour-2"
+    },
+    {
+      "id": "2026-02-18-fahrradtour",
+      "path": "2026-02-18-fahrradtour"
+    },
+    {
+      "id": "2026-02-15-fahrradtour",
+      "path": "2026-02-15-fahrradtour"
+    },
+    {
+      "id": "2026-02-27-docs-tour",
+      "path": "2026-02-27-docs-tour"
+    },
+    {
+      "id": "2026-02-25-wandern",
+      "path": "2026-02-25-wandern"
+    },
+    {
       "id": "2026-02-18-cycling",
       "path": "2026-02-18-cycling"
     },
@@ -680,10 +976,6 @@
     {
       "id": "2021-07-07-cycling",
       "path": "2021-07-07-cycling"
-    },
-    {
-      "id": "2021-07-05-cycling",
-      "path": "2021-07-05-cycling"
     },
     {
       "id": "2021-07-04-cycling",

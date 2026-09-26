@@ -4,43 +4,93 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CounterTracker } from '@/components/fitness/CounterTracker'
 import { LogCard } from '@/components/fitness/LogCard'
 import { MiniWeekBars } from '@/components/fitness/MiniWeekBars'
-import { formatDateEU, getTodayISO, loadSetsCsv, type SetsRow } from '@/data/setsCsv'
-
+import { formatDateEU, getTodayISO,  type SetsRow } from '@/data/setsCsv'
+import {  syncFromCSV } from '@/lib/dexie_do/fitness'
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/dexie_do/schema'
 type FitnessView = 'dashboard' | 'dips' | 'pullups'
 
-const DIPS_PATH = '/fitness/dips.csv'
-const PULLUPS_PATH = '/fitness/pullups.csv'
+
 
 export function FitnessPage() {
-  const [view, setView] = useState<FitnessView>('dashboard')
-  const [dipsRows, setDipsRows] = useState<SetsRow[] | null>(null)
-  const [pullupsRows, setPullupsRows] = useState<SetsRow[] | null>(null)
-  const [err, setErr] = useState<string | null>(null)
+  useEffect(() => {
+    syncFromCSV();
+  }, []);
+  const dipsLogs = useLiveQuery(
+    () => db.fitnessLogs.where({ exercise: 'dips' }).reverse().sortBy('date')
+  ) || [];
+  const pullupsLogs = useLiveQuery(
+    () => db.fitnessLogs.where({ exercise: 'pullups' }).reverse().sortBy('date')
+  ) || [];
 
-  const refresh = useCallback(async () => {
-    try {
-      setErr(null)
-      const [dips, pullups] = await Promise.all([loadSetsCsv(DIPS_PATH), loadSetsCsv(PULLUPS_PATH)])
-      setDipsRows(dips)
-      setPullupsRows(pullups)
-    } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : String(e))
+  const [view, setView] = useState<FitnessView>('dashboard')
+  // const [dipsRows, setDipsRows] = useState<SetsRow[] | null>(null)
+  // const [pullupsRows, setPullupsRows] = useState<SetsRow[] | null>(null)
+  // const [err, setErr] = useState<string | null>(null)
+
+  // const refresh = useCallback(async () => {
+  //   try {
+  //     setErr(null)
+  //     const [dips, pullups] = await Promise.all([loadSetsCsv(DIPS_PATH), loadSetsCsv(PULLUPS_PATH)])
+  //     setDipsRows(dips)
+  //     setPullupsRows(pullups)
+  //   } catch (e: unknown) {
+  //     setErr(e instanceof Error ? e.message : String(e))
+  //   }
+  // }, [])
+
+  // useEffect(() => {
+  //   refresh()
+  //   const id = window.setInterval(refresh, 5000)
+  //   const onVis = () => document.visibilityState === 'visible' && refresh()
+  //   document.addEventListener('visibilitychange', onVis)
+  //   return () => {
+  //     window.clearInterval(id)
+  //     document.removeEventListener('visibilitychange', onVis)
+  //   }
+  // }, [refresh])
+  // const today = getTodayISO()
+  // const dipsToday = useMemo(() => dipsRows?.find((r) => r.date === today)?.total ?? 0, [dipsRows, today])
+  // const pullupsToday = useMemo(() => pullupsRows?.find((r) => r.date === today)?.total ?? 0, [pullupsRows, today])
+
+// NEU: Wandelt die Dexie-Strings in das Array-Format für die UI um
+  const mappedDipsRows = useMemo(() => dipsLogs.map(log => {
+    const sets = log.sets ? log.sets.split(',').map(Number) : []
+    return {
+      date: log.date,
+      sets,
+      total: sets.reduce((sum, n) => sum + (isNaN(n) ? 0 : n), 0)
     }
-  }, [])
+  }), [dipsLogs])
+
+  const mappedPullupsRows = useMemo(() => pullupsLogs.map(log => {
+    const sets = log.sets ? log.sets.split(',').map(Number) : []
+    return {
+      date: log.date,
+      sets,
+      total: sets.reduce((sum, n) => sum + (isNaN(n) ? 0 : n), 0)
+    }
+  }), [pullupsLogs])
+
+  const today = getTodayISO()
+// NEU: Zwingt Dexie, sich im Hintergrund regelmäßig mit der CSV abzugleichen
+  const refresh = useCallback(async () => {
+    await syncFromCSV();
+  }, []);
 
   useEffect(() => {
-    refresh()
-    const id = window.setInterval(refresh, 5000)
-    const onVis = () => document.visibilityState === 'visible' && refresh()
-    document.addEventListener('visibilitychange', onVis)
+    const id = window.setInterval(refresh, 5000);
+    const onVis = () => document.visibilityState === 'visible' && refresh();
+    document.addEventListener('visibilitychange', onVis);
     return () => {
-      window.clearInterval(id)
-      document.removeEventListener('visibilitychange', onVis)
-    }
-  }, [refresh])
-  const today = getTodayISO()
-  const dipsToday = useMemo(() => dipsRows?.find((r) => r.date === today)?.total ?? 0, [dipsRows, today])
-  const pullupsToday = useMemo(() => pullupsRows?.find((r) => r.date === today)?.total ?? 0, [pullupsRows, today])
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [refresh]);
+  // ANGEPASST: Nutzt nun die neuen mapped...Rows
+  const dipsToday = useMemo(() => mappedDipsRows.find((r) => r.date === today)?.total ?? 0, [mappedDipsRows, today])
+  const pullupsToday = useMemo(() => mappedPullupsRows.find((r) => r.date === today)?.total ?? 0, [mappedPullupsRows, today])
+
 
   if (view === 'dips') {
     return (
@@ -48,7 +98,7 @@ export function FitnessPage() {
         <Button variant="outline" size="sm" onClick={() => setView('dashboard')}>
           ← zurück
         </Button>
-        <CounterTracker title="Dips" csvPath={DIPS_PATH} />
+        <CounterTracker title="Dips" rows={mappedDipsRows} />
       </div>
     )
   }
@@ -59,7 +109,7 @@ export function FitnessPage() {
         <Button variant="outline" size="sm" onClick={() => setView('dashboard')}>
           ← zurück
         </Button>
-        <CounterTracker title="Pull-ups" csvPath={PULLUPS_PATH} />
+        <CounterTracker title="Pull-ups" rows={mappedPullupsRows} />
       </div>
     )
   }
@@ -68,10 +118,10 @@ export function FitnessPage() {
   return (
     <div className="space-y-6">
       <LogCard onLogged={refresh} />
-      {err ? <div className="text-sm text-destructive">{err}</div> : null}
+      {/* {err ? <div className="text-sm text-destructive">{err}</div> : null} */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <FitnessTileCard title="Dips" today={dipsToday} rows={dipsRows} todayISO={today} onClick={() => setView('dips')} />
-        <FitnessTileCard title="Pull-ups" today={pullupsToday} rows={pullupsRows} todayISO={today} onClick={() => setView('pullups')} />
+        <FitnessTileCard title="Dips" today={dipsToday} rows={mappedDipsRows} todayISO={today} onClick={() => setView('dips')} />
+        <FitnessTileCard title="Pull-ups" today={pullupsToday} rows={mappedPullupsRows} todayISO={today} onClick={() => setView('pullups')} />
       </div>
       <Card className="border-0 shadow-sm">
         <CardHeader>
