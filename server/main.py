@@ -221,7 +221,7 @@ def list_inbox_all(offset: int = 0, limit: int | None = None, before: str | None
             page = [p for _, p in ranked[offset : offset + limit]]
         else:
             page = images[offset : offset + limit]
-        has_more = partial or (total is not None and offset + len(page) < total)
+        has_more = partial
 
     items: list[GalleryItem] = []
     for img in page:

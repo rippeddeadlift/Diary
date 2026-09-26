@@ -62,6 +62,23 @@ class TestPhotosEndpoints:
         assert data["total"] in (None, 3)
         assert [it["path"].rsplit("/", 1)[-1] for it in data["items"]] == ["b.jpg", "c.jpg"]
 
+    def test_list_inbox_page_appends_undated_after_dated(self, client, temp_data_dir):
+        """Photos with no date still load, after every dated photo."""
+        inbox = temp_data_dir / "photos" / "inbox"
+        (inbox / "new.jpg").write_bytes(b"not-a-real-image")
+        (inbox / "new.jpg.json").write_text('{"createdAt":"2024-06-01T12:00:00"}', encoding="utf-8")
+        (inbox / "nodate.jpg").write_bytes(b"not-a-real-image")
+        (inbox / "nodate.jpg.json").write_text('{"people":[],"tags":[]}', encoding="utf-8")
+
+        client.get("/api/photos/inbox/all")
+        first = client.get("/api/photos/inbox/all?limit=1").json()
+        assert first["items"][0]["path"].endswith("new.jpg")
+        assert first["hasMore"] is True
+
+        rest = client.get("/api/photos/inbox/all", params={"before": first["items"][0]["path"], "limit": 5}).json()
+        assert [it["path"].rsplit("/", 1)[-1] for it in rest["items"]] == ["nodate.jpg"]
+        assert rest["hasMore"] is False
+
     def test_suggest_photos_invalid_date(self, client):
         """Test photo suggestion with invalid date."""
         response = client.get("/api/photos/suggest?date=invalid")

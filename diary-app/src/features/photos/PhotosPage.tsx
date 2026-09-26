@@ -162,11 +162,7 @@ export function PhotosPage() {
         items={filtered}
         index={viewerIndex}
         onChangeIndex={setViewerIndex}
-        onClose={() => {
-          setViewerIndex(null)
-          // viewer interactions may have updated sidecars; keep gallery fresh
-          void loadGallery()
-        }}
+        onClose={() => setViewerIndex(null)}
       />
 
       {selectionMode ? (

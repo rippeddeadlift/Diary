@@ -177,7 +177,7 @@ def _page_from_order(limit: int, before_path: str | None) -> tuple[list[Path], b
     order = load_gallery_order()
     if not order:
         return None
-    ranked = [rel for rel in sorted(order, key=lambda rel: order_sort_key(rel, order.get(rel))) if order.get(rel)]
+    ranked = sorted(order, key=lambda rel: order_sort_key(rel, order.get(rel)))
     if before_path:
         try:
             start = ranked.index(before_path) + 1
@@ -234,12 +234,10 @@ def newest_inbox_images(limit: int, before_path: str | None = None) -> tuple[lis
             if not img.is_file() or not is_image_file(img) or "thumbs" in img.parts:
                 continue
             created = _sidecar_created_at(img)
-            if not created:
-                continue
             rel = img.relative_to(DATA_DIR).as_posix()
             if cursor_key is not None and order_sort_key(rel, created) <= cursor_key:
                 continue
-            found.append((created, img))
+            found.append((created or "", img))
         if len(found) >= limit and folder != PHOTOS_INBOX_DIR and folder.name[:10] < cursor_day:
             scanned_all = False
             break
