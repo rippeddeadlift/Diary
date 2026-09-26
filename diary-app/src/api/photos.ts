@@ -13,11 +13,28 @@ function errText(res: Response, bodyText?: string) {
   return `${res.status} ${res.statusText}${extra}`
 }
 
-export async function listGallery(): Promise<GalleryItem[]> {
-  const res = await fetch('/api/photos/inbox/all')
+export type GalleryPage = {
+  items: GalleryItem[]
+  total: number | null
+  offset: number
+  hasMore: boolean
+}
+
+export async function listGallery(opts?: { offset?: number; limit?: number }): Promise<GalleryPage> {
+  const qs = new URLSearchParams()
+  if (typeof opts?.offset === 'number') qs.set('offset', String(opts.offset))
+  if (typeof opts?.limit === 'number') qs.set('limit', String(opts.limit))
+  const q = qs.toString()
+  const res = await fetch(q ? `/api/photos/inbox/all?${q}` : '/api/photos/inbox/all')
   if (!res.ok) throw new Error(errText(res))
   const json = (await res.json()) as GalleryResponse
-  return (json.items ?? []).map(normalizeGalleryItem)
+  const items = (json.items ?? []).map(normalizeGalleryItem)
+  return {
+    items,
+    total: typeof json.total === 'number' ? json.total : null,
+    offset: json.offset ?? opts?.offset ?? 0,
+    hasMore: Boolean(json.hasMore)
+  }
 }
 
 export async function suggestPhotos(params: { date: string; bbox?: [number, number, number, number]; limit?: number }): Promise<GalleryItem[]> {

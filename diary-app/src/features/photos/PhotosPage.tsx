@@ -18,7 +18,7 @@ import { trashPhotos } from '@/api/photos'
 import { cn } from '@/lib/utils'
 
 export function PhotosPage() {
-  const { items: gallery, error: galleryErr, reload: loadGallery } = useGallery()
+  const { items: gallery, total: galleryTotal, loading: galleryLoading, loadingMore, error: galleryErr, reload: loadGallery } = useGallery()
   const [showOnlyWithLocation, setShowOnlyWithLocation] = useState(false);
 
 
@@ -68,7 +68,8 @@ export function PhotosPage() {
             <div>
               <CardTitle className="text-base">Galerie</CardTitle>
               <div className="text-xs text-muted-foreground">
-                {filtered.length} / {gallery.length} Fotos
+                {filtered.length} / {galleryTotal != null ? galleryTotal : gallery.length} Fotos
+                {loadingMore ? ' …' : ''}
               </div>
             </div>
 
@@ -141,7 +142,9 @@ export function PhotosPage() {
           ) : null}
           {galleryErr ? <div className="text-sm text-destructive">{galleryErr}</div> : null}
 
-          {filtered.length === 0 ? (
+          {galleryLoading && gallery.length === 0 ? (
+            <div className="text-sm text-muted-foreground">Fotos werden geladen…</div>
+          ) : filtered.length === 0 ? (
             <div className="text-sm text-muted-foreground">Keine Fotos gefunden (Filter?).</div>
           ) : (
             <GalleryGrid

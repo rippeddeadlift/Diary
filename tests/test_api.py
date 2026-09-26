@@ -38,6 +38,29 @@ class TestPhotosEndpoints:
         assert data["ok"] is True
         assert data["count"] == 0
         assert data["items"] == []
+        assert data["hasMore"] is False
+
+    def test_list_inbox_page_does_not_require_full_scan(self, client, temp_data_dir):
+        """A limited page returns before every sidecar is needed."""
+        inbox = temp_data_dir / "photos" / "inbox"
+        for name, created in (
+            ("a.jpg", "2024-01-01T12:00:00"),
+            ("b.jpg", "2024-03-01T12:00:00"),
+            ("c.jpg", "2024-02-01T12:00:00"),
+        ):
+            (inbox / name).write_bytes(b"not-a-real-image")
+            (inbox / f"{name}.json").write_text(
+                '{"people":[],"tags":[],"createdAt":"%s"}' % created,
+                encoding="utf-8",
+            )
+
+        response = client.get("/api/photos/inbox/all?offset=0&limit=2")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["count"] == 2
+        assert data["hasMore"] is True
+        assert data["total"] in (None, 3)
+        assert [it["path"].rsplit("/", 1)[-1] for it in data["items"]] == ["b.jpg", "c.jpg"]
 
     def test_suggest_photos_invalid_date(self, client):
         """Test photo suggestion with invalid date."""

@@ -30,4 +30,12 @@ export type RawGalleryItem = {
   missing?: boolean
 }
 
-export type GalleryResponse = { ok: boolean; items: RawGalleryItem[] }
+export type GalleryResponse = {
+  ok: boolean
+  count?: number
+  total?: number | null
+  offset?: number
+  limit?: number | null
+  hasMore?: boolean
+  items: RawGalleryItem[]
+}

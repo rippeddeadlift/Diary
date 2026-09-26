@@ -33,6 +33,10 @@ class GalleryItem(BaseModel):
 class GalleryListResponse(BaseModel):
     ok: bool = True
     count: int
+    total: Optional[int] = None
+    offset: int = 0
+    limit: Optional[int] = None
+    hasMore: bool = False
     items: list[GalleryItem]
 
 

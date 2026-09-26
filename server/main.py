@@ -85,7 +85,9 @@ from .models import (
 from .photos_repo import (
     batch_folder_name,
     build_sidecar_for_image,
+    iter_inbox_images,
     list_inbox_images,
+    newest_inbox_images,
     load_or_init_sidecar_for_image,
     resolve_data_path,
     save_sidecar,
@@ -97,6 +99,12 @@ from .photos_repo import (
     load_sha256_index,
     save_sha256_index,
     sha256_file,
+    GALLERY_ORDER_PATH,
+    load_gallery_order,
+    save_gallery_order,
+    load_gallery_paths,
+    save_gallery_paths,
+    order_sort_key,
 )
 
 APP_TITLE = "Diary Upload Server"
@@ -113,82 +121,145 @@ def health():
     return {"ok": True, "time": datetime.now().astimezone().isoformat(timespec="seconds")}
 
 
-@app.get("/api/photos/inbox/all", response_model=GalleryListResponse)
-def list_inbox_all():
-    items: list[GalleryItem] = []
+def _gallery_item_for(img: Path) -> GalleryItem | None:
+    rel = img.relative_to(DATA_DIR).as_posix()
+    thumb_rel = f"photos/_thumbs/{rel}"
+    thumb_abs = (DATA_DIR / thumb_rel).resolve()
+    thumb_exists = thumb_abs.exists()
+    sc_path = sidecar_path_for(img)
+    sc = load_or_init_sidecar_for_image(img) if sc_path.exists() else {}
 
-    errors: list[dict[str, Any]] = []
+    people = sc.get("people") or []
+    tags = sc.get("tags") or []
+    created_at = sc.get("createdAt")
+    created_src = sc.get("createdAtSource")
+    location = sc.get("location")
 
-    for img in list_inbox_images():
-        rel = img.relative_to(DATA_DIR).as_posix()
-        thumb_rel = f"photos/_thumbs/{rel}"
-        thumb_abs = (DATA_DIR / thumb_rel).resolve()
-        thumb_exists = thumb_abs.exists()
-        sc_path = sidecar_path_for(img)
-        sc = load_or_init_sidecar_for_image(img) if sc_path.exists() else {}
+    if not isinstance(people, list):
+        people = []
+    if not isinstance(tags, list):
+        tags = []
+    people = [str(x) for x in people if x is not None and str(x).strip()]
+    tags = [str(x) for x in tags if x is not None and str(x).strip()]
 
-        people = sc.get("people") or []
-        tags = sc.get("tags") or []
-        created_at = sc.get("createdAt")
-        created_src = sc.get("createdAtSource")
-        location = sc.get("location")
+    if created_at is not None and not isinstance(created_at, str):
+        created_at = str(created_at)
+    if created_src is not None and not isinstance(created_src, str):
+        created_src = str(created_src)
 
-        # Normalize types (defensive: avoid response_model validation 500)
-        if not isinstance(people, list):
-            people = []
-        if not isinstance(tags, list):
-            tags = []
-        people = [str(x) for x in people if x is not None and str(x).strip()]
-        tags = [str(x) for x in tags if x is not None and str(x).strip()]
-
-        if created_at is not None and not isinstance(created_at, str):
-            created_at = str(created_at)
-        if created_src is not None and not isinstance(created_src, str):
-            created_src = str(created_src)
-
-        loc_obj: Any = None
-        if isinstance(location, dict) and "lat" in location and "lon" in location:
-            try:
-                loc_obj = {
-                    "lat": float(location["lat"]),
-                    "lon": float(location["lon"]),
-                    "source": str(location.get("source") or "exif_gps"),
-                }
-            except Exception:
-                loc_obj = None
-
-        missing = not bool(created_at)
-
+    loc_obj: Any = None
+    if isinstance(location, dict) and "lat" in location and "lon" in location:
         try:
-            items.append(
-                GalleryItem(
-                    path=rel,
-                    url=f"/files/{rel}",
-                    hasSidecar=sc_path.exists(),
-                    sidecarPath=sc_path.relative_to(DATA_DIR).as_posix() if sc_path.exists() else None,
-                    thumbUrl=f"/files/{thumb_rel}" if thumb_exists else None,
-                    thumbExists=thumb_exists,
-                    people=people,
-                    tags=tags,
-                    createdAt=created_at,
-                    createdAtSource=created_src,
-                    location=loc_obj,
-                    missing=missing,
-                )
+            loc_obj = {
+                "lat": float(location["lat"]),
+                "lon": float(location["lon"]),
+                "source": str(location.get("source") or "exif_gps"),
+            }
+        except Exception:
+            loc_obj = None
+
+    missing = not bool(created_at)
+
+    try:
+        return GalleryItem(
+            path=rel,
+            url=f"/files/{rel}",
+            hasSidecar=sc_path.exists(),
+            sidecarPath=sc_path.relative_to(DATA_DIR).as_posix() if sc_path.exists() else None,
+            thumbUrl=f"/files/{thumb_rel}" if thumb_exists else None,
+            thumbExists=thumb_exists,
+            people=people,
+            tags=tags,
+            createdAt=created_at,
+            createdAtSource=created_src,
+            location=loc_obj,
+            missing=missing,
+        )
+    except Exception:
+        return None
+
+
+@app.get("/api/photos/inbox/all", response_model=GalleryListResponse)
+def list_inbox_all(offset: int = 0, limit: int | None = None):
+    """List inbox photos.
+
+    Without limit, returns the full sorted list (existing callers).
+    With limit, returns one page so the UI can paint before the rest is read.
+    """
+    offset = max(0, offset)
+    order: dict[str, str | None] = {}
+    cached_rels = load_gallery_paths() if limit is not None else []
+    # A sorted page needs a date for every path. Use it only when the last full
+    # pass already wrote one; otherwise scan newest folders only.
+    if limit is not None and cached_rels and GALLERY_ORDER_PATH.exists():
+        order = load_gallery_order()
+
+    partial = False
+    if limit is not None and order and cached_rels:
+        total = len(cached_rels)
+        ranked = sorted(cached_rels, key=lambda rel: order_sort_key(rel, order.get(rel)))
+        page_rels = ranked[offset : offset + max(1, min(limit, 500))]
+        images = [resolve_data_path(rel) for rel in page_rels]
+        # Already one page; the later slice must not apply offset again.
+        offset = 0
+    elif limit is not None and offset == 0:
+        images, partial = newest_inbox_images(max(1, min(limit, 500)))
+        total = len(cached_rels) if cached_rels else None
+    elif limit is not None:
+        limit_n = max(1, min(limit, 500))
+        images = []
+        for img in iter_inbox_images():
+            images.append(img)
+            if len(images) >= offset + limit_n:
+                partial = True
+                break
+        total = None if partial else len(images)
+    else:
+        images = list_inbox_images()
+        total = len(images)
+        try:
+            save_gallery_paths([p.relative_to(DATA_DIR).as_posix() for p in images])
+        except Exception:
+            pass
+
+    if limit is None:
+        page = images
+        has_more = False
+    else:
+        limit = max(1, min(limit, 500))
+        if order:
+            ranked = sorted(
+                ((p.relative_to(DATA_DIR).as_posix(), p) for p in images),
+                key=lambda pair: order_sort_key(pair[0], order.get(pair[0])),
             )
-        except Exception as e:
-            errors.append({"path": rel, "error": str(e)})
-            continue
+            page = [p for _, p in ranked[offset : offset + limit]]
+        else:
+            page = images[offset : offset + limit]
+        has_more = partial or (total is not None and offset + len(page) < total)
 
-    # Sort: non-missing first, then by createdAt (desc). Missing is always last.
-    # Keep the sort logic in photos_repo.
-    items_dicts = [it.model_dump() for it in items]
-    sort_gallery_items(items_dicts)
-    items = [GalleryItem(**d) for d in items_dicts]
+    items: list[GalleryItem] = []
+    for img in page:
+        item = _gallery_item_for(img)
+        if item is not None:
+            items.append(item)
 
-    # We don't expose errors in the typed response model; keep count stable.
-    # If you need diagnostics, check server logs.
-    return GalleryListResponse(count=len(items), items=items)
+    if limit is None:
+        items_dicts = [it.model_dump() for it in items]
+        sort_gallery_items(items_dicts)
+        items = [GalleryItem(**d) for d in items_dicts]
+        try:
+            save_gallery_order({it.path: it.createdAt for it in items})
+        except Exception:
+            pass
+
+    return GalleryListResponse(
+        count=len(items),
+        total=total,
+        offset=offset,
+        limit=limit,
+        hasMore=has_more,
+        items=items,
+    )
 
 
 @app.get("/api/photos/suggest", response_model=GalleryListResponse)

@@ -15,12 +15,7 @@ const PhotoCard = memo(({
 }) => {
   const [src, setSrc] = useState<string | undefined>(undefined)
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setSrc(imgUrl)
-    }, 250) // 150ms Puffer
-
-    // Wenn das Bild aus dem sichtbaren Bereich verschwindet, brich den Timer ab
-    return () => clearTimeout(timer)
+    setSrc(imgUrl)
   }, [imgUrl])
   return (
     <div className="group relative transition-all">

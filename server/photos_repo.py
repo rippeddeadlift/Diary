@@ -12,6 +12,8 @@ import hashlib
 from .config import DATA_DIR, IMG_EXTS, PHOTOS_INBOX_DIR
 
 SHA256_INDEX_PATH = DATA_DIR / "photos" / "_sha256_index.json"
+GALLERY_ORDER_PATH = DATA_DIR / "photos" / "_gallery_order.json"
+GALLERY_PATHS_PATH = DATA_DIR / "photos" / "_gallery_paths.json"
 from .exif_utils import extract_created_at_and_location, read_exif
 
 
@@ -144,6 +146,83 @@ def save_sha256_index(idx: dict[str, str]) -> None:
     SHA256_INDEX_PATH.write_text(json.dumps(idx, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def iter_inbox_images():
+    """Yield inbox images as they are found. Does not sort or buffer the whole tree."""
+    PHOTOS_INBOX_DIR.mkdir(parents=True, exist_ok=True)
+    for p in PHOTOS_INBOX_DIR.rglob("*"):
+        if not p.is_file():
+            continue
+        if not is_image_file(p):
+            continue
+        if "thumbs" in p.parts:
+            continue
+        yield p
+
+
+def _sidecar_created_at(img: Path) -> str | None:
+    sc_path = sidecar_path_for(img)
+    if not sc_path.exists():
+        return None
+    try:
+        data = json.loads(sc_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    if not isinstance(data, dict):
+        return None
+    created = data.get("createdAt")
+    return str(created) if created else None
+
+
+def newest_inbox_images(limit: int) -> tuple[list[Path], bool]:
+    """Return the newest dated photos without reading every sidecar.
+
+    Uses the date cache when it exists. Otherwise only the newest batch folders
+    are opened until ``limit`` dated photos are found.
+    """
+    limit = max(1, limit)
+    order = load_gallery_order()
+    if order:
+        ranked = sorted(order, key=lambda rel: order_sort_key(rel, order.get(rel)))
+        page: list[Path] = []
+        for rel in ranked:
+            if order.get(rel) is None:
+                continue
+            try:
+                img = resolve_data_path(rel)
+            except ValueError:
+                continue
+            if img.is_file():
+                page.append(img)
+            if len(page) >= limit:
+                break
+        return page, len(order) > limit
+
+    PHOTOS_INBOX_DIR.mkdir(parents=True, exist_ok=True)
+    folders = [p for p in PHOTOS_INBOX_DIR.iterdir() if p.is_dir() and not p.name.startswith("_")]
+    loose = [p for p in PHOTOS_INBOX_DIR.iterdir() if p.is_file() and is_image_file(p)]
+    folders.sort(key=lambda p: p.name, reverse=True)
+    # Loose files have no batch date, so read them before assuming the page is complete.
+    folders.append(PHOTOS_INBOX_DIR)
+
+    found: list[tuple[str, Path]] = []
+    scanned_all = True
+    for folder in folders:
+        children = loose if folder == PHOTOS_INBOX_DIR else folder.rglob("*")
+        for img in children:
+            if not img.is_file() or not is_image_file(img) or "thumbs" in img.parts:
+                continue
+            created = _sidecar_created_at(img)
+            if created:
+                found.append((created, img))
+        if len(found) >= limit:
+            scanned_all = False
+            break
+
+    found.sort(key=lambda pair: order_sort_key(pair[1].as_posix(), pair[0]))
+    page = [img for _, img in found[:limit]]
+    return page, not scanned_all or len(found) > limit
+
+
 def list_inbox_images() -> list[Path]:
     PHOTOS_INBOX_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -160,6 +239,53 @@ def list_inbox_images() -> list[Path]:
 
     files.sort()
     return files
+
+
+def load_gallery_paths() -> list[str]:
+    try:
+        if GALLERY_PATHS_PATH.exists():
+            data = json.loads(GALLERY_PATHS_PATH.read_text(encoding="utf-8"))
+            if isinstance(data, list):
+                return [str(x) for x in data]
+    except Exception:
+        pass
+    return []
+
+
+def save_gallery_paths(rels: list[str]) -> None:
+    GALLERY_PATHS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    GALLERY_PATHS_PATH.write_text(json.dumps(rels, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def load_gallery_order() -> dict[str, str | None]:
+    """rel path -> createdAt from the last full gallery pass. None means missing."""
+    try:
+        if GALLERY_ORDER_PATH.exists():
+            data = json.loads(GALLERY_ORDER_PATH.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                return {str(k): (None if v is None else str(v)) for k, v in data.items()}
+    except Exception:
+        pass
+    return {}
+
+
+def save_gallery_order(order: dict[str, str | None]) -> None:
+    GALLERY_ORDER_PATH.parent.mkdir(parents=True, exist_ok=True)
+    GALLERY_ORDER_PATH.write_text(json.dumps(order, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def order_sort_key(rel: str, created_at: str | None):
+    """Same order as sort_gallery_items: dated photos first (newest), missing last."""
+    if not created_at:
+        return (1, 0.0, rel)
+    dt = parse_isoish(created_at)
+    if dt is None:
+        return (1, 0.0, rel)
+    if dt.tzinfo is None:
+        local_tz = datetime.now().astimezone().tzinfo
+        if local_tz is not None:
+            dt = dt.replace(tzinfo=local_tz)
+    return (0, -dt.timestamp(), rel)
 
 
 def parse_isoish(s: str) -> Optional[datetime]:
