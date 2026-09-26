@@ -7,6 +7,8 @@ import { PhotoPointMap } from '@/components/maps/PhotoPointMap'
 import { PEOPLE, PHOTO_TAGS } from '@/data/tagConfig'
 import { TagChips } from './TagChips'
 import { Switch } from '@/components/ui/switch'
+import { FullScreenPhotoViewer } from './FullScreenPhotoViewer'
+import { Maximize2 } from 'lucide-react'
 
 
 
@@ -52,6 +54,7 @@ export function PhotoViewerDialog({
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const [fsIndex, setFsIndex] = useState<number | null>(null)
 
   const initialRef = useRef<{ people: string[]; tags: string[] } | null>(null)
   const loadedRef = useRef(false)
@@ -113,16 +116,27 @@ export function PhotoViewerDialog({
     onChangeIndex(next)
   }
 
+  function openFullScreen() {
+    if (index !== null) setFsIndex(index)
+  }
+
+  function exitFullScreen() {
+    if (fsIndex !== null) {
+      onChangeIndex(fsIndex)
+    }
+    setFsIndex(null)
+  }
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (index === null) return
+      if (index === null || fsIndex !== null) return
       if (e.key === 'ArrowLeft') void go(-1)
       if (e.key === 'ArrowRight') void go(1)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index, items.length])
+  }, [index, items.length, fsIndex])
 
   async function shareCurrent() {
     if (!item) return
@@ -171,6 +185,7 @@ export function PhotoViewerDialog({
   }
 
   return (
+    <>
     <Dialog
       open={index !== null}
       onOpenChange={(open) => {
@@ -206,6 +221,15 @@ export function PhotoViewerDialog({
                     <Button type="button" size="sm" variant="outline" onClick={() => void shareCurrent()}>
                       Teilen
                     </Button>
+                    <button
+                      type="button"
+                      onClick={openFullScreen}
+                      className="rounded-md border bg-background/80 px-2 py-1 text-xs text-foreground hover:bg-background"
+                      title="Vollbild"
+                      aria-label="Vollbild öffnen"
+                    >
+                      <Maximize2 className="h-3.5 w-3.5" />
+                    </button>
                   </div>
 
                   <button
@@ -269,5 +293,13 @@ export function PhotoViewerDialog({
         ) : null}
       </DialogContent>
     </Dialog>
+
+    <FullScreenPhotoViewer
+      items={items}
+      index={fsIndex}
+      onChangeIndex={setFsIndex}
+      onExit={exitFullScreen}
+    />
+    </>
   )
 }
