@@ -18,7 +18,7 @@ import {
   AlertDialogTrigger
 } from '@/components/ui/alert-dialog'
 import { Switch } from '@/components/ui/switch'
-import { TagChips } from '@/components/photos/TagChips'
+import { TagChips } from '@/features/photos/components/TagChips'
 import { TRIP_ACTIVITY_TAGS } from '@/data/tagConfig'
 
 function ensureSingleActivity(tags: string[]): string[] {

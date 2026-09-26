@@ -1,9 +1,9 @@
-import { memo, useEffect,  useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import { useWindowVirtualizer } from '@tanstack/react-virtual'
 
 import type { GalleryItem } from '@/types/photos'
 import { formatDateTimeEU } from '@/lib/format'
-import { useGalleryColumns } from '@/hooks/useGalleryColumns'
+import { useGalleryColumns } from '../hooks/useGalleryColumns'
 import { cn } from '@/lib/utils'
 
 

@@ -24,36 +24,8 @@ export function FitnessPage() {
   ) || [];
 
   const [view, setView] = useState<FitnessView>('dashboard')
-  // const [dipsRows, setDipsRows] = useState<SetsRow[] | null>(null)
-  // const [pullupsRows, setPullupsRows] = useState<SetsRow[] | null>(null)
-  // const [err, setErr] = useState<string | null>(null)
 
-  // const refresh = useCallback(async () => {
-  //   try {
-  //     setErr(null)
-  //     const [dips, pullups] = await Promise.all([loadSetsCsv(DIPS_PATH), loadSetsCsv(PULLUPS_PATH)])
-  //     setDipsRows(dips)
-  //     setPullupsRows(pullups)
-  //   } catch (e: unknown) {
-  //     setErr(e instanceof Error ? e.message : String(e))
-  //   }
-  // }, [])
-
-  // useEffect(() => {
-  //   refresh()
-  //   const id = window.setInterval(refresh, 5000)
-  //   const onVis = () => document.visibilityState === 'visible' && refresh()
-  //   document.addEventListener('visibilitychange', onVis)
-  //   return () => {
-  //     window.clearInterval(id)
-  //     document.removeEventListener('visibilitychange', onVis)
-  //   }
-  // }, [refresh])
-  // const today = getTodayISO()
-  // const dipsToday = useMemo(() => dipsRows?.find((r) => r.date === today)?.total ?? 0, [dipsRows, today])
-  // const pullupsToday = useMemo(() => pullupsRows?.find((r) => r.date === today)?.total ?? 0, [pullupsRows, today])
-
-// NEU: Wandelt die Dexie-Strings in das Array-Format für die UI um
+  // Convert Dexie string sets into the array format expected by UI components
   const mappedDipsRows = useMemo(() => dipsLogs.map(log => {
     const sets = log.sets ? log.sets.split(',').map(Number) : []
     return {
@@ -73,7 +45,8 @@ export function FitnessPage() {
   }), [pullupsLogs])
 
   const today = getTodayISO()
-// NEU: Zwingt Dexie, sich im Hintergrund regelmäßig mit der CSV abzugleichen
+
+  // Periodically sync Dexie cache from CSV in background
   const refresh = useCallback(async () => {
     await syncFromCSV();
   }, []);
@@ -87,7 +60,7 @@ export function FitnessPage() {
       document.removeEventListener('visibilitychange', onVis);
     };
   }, [refresh]);
-  // ANGEPASST: Nutzt nun die neuen mapped...Rows
+
   const dipsToday = useMemo(() => mappedDipsRows.find((r) => r.date === today)?.total ?? 0, [mappedDipsRows, today])
   const pullupsToday = useMemo(() => mappedPullupsRows.find((r) => r.date === today)?.total ?? 0, [mappedPullupsRows, today])
 

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { UploadResult } from '@/types/uploads'
 import { uploadPhotos, uploadZip } from '@/api/photos'
 import { chunkArray } from '@/lib/chunk'
-import { UploadProgress } from '@/components/photos/UploadProgress'
+import { UploadProgress } from './UploadProgress'
 
 export function PhotoUploadCard({ onUploaded }: { onUploaded: () => Promise<void> }) {
   const fileInputRef = useRef<HTMLInputElement>(null)

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { ThemeToggle } from './components/ThemeToggle'
 import { Button } from '@/components/ui/button'
-import { PhotosPage } from '@/pages/PhotosPage'
+import { PhotosPage } from '@/features/photos/PhotosPage'
 import { MenuPage } from '@/pages/MenuPage'
 import { FitnessPage } from '@/pages/FitnessPage'
 import { ToursPage } from '@/pages/ToursPage'

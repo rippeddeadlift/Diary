@@ -2,12 +2,12 @@ import { useCallback, useEffect, useState } from 'react'
 import type { Trip } from '@/data/trips'
 import type { GalleryItem } from '@/types/photos'
 import { suggestPhotos, trashPhotos } from '@/api/photos'
-import { GalleryGrid } from '../photos/GalleryGrid'
-import { PhotoViewerDialog } from '../photos/PhotoViewerDialog'
-import { useBulkTagging } from '@/hooks/useBulkTagging'
-import { BulkTagDialog } from '../photos/BulkTagDialog'
-import { useBulkSelection } from '@/hooks/useBulkSelection'
-import { SelectionBar } from '../photos/SelectionBar'
+import { GalleryGrid } from '@/features/photos/components/GalleryGrid'
+import { PhotoViewerDialog } from '@/features/photos/components/PhotoViewerDialog'
+import { useBulkTagging } from '@/features/photos/hooks/useBulkTagging'
+import { BulkTagDialog } from '@/features/photos/components/BulkTagDialog'
+import { useBulkSelection } from '@/features/photos/hooks/useBulkSelection'
+import { SelectionBar } from '@/features/photos/components/SelectionBar'
 
 export function TripPhotoSuggestions({ trip }: { trip: Trip }) {
   const [items, setItems] = useState<GalleryItem[]>([])
