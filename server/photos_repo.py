@@ -173,29 +173,49 @@ def _sidecar_created_at(img: Path) -> str | None:
     return str(created) if created else None
 
 
-def newest_inbox_images(limit: int) -> tuple[list[Path], bool]:
-    """Return the newest dated photos without reading every sidecar.
+def _page_from_order(limit: int, before_path: str | None) -> tuple[list[Path], bool] | None:
+    order = load_gallery_order()
+    if not order:
+        return None
+    ranked = [rel for rel in sorted(order, key=lambda rel: order_sort_key(rel, order.get(rel))) if order.get(rel)]
+    if before_path:
+        try:
+            start = ranked.index(before_path) + 1
+        except ValueError:
+            start = 0
+    else:
+        start = 0
+    page: list[Path] = []
+    for rel in ranked[start:]:
+        try:
+            img = resolve_data_path(rel)
+        except ValueError:
+            continue
+        if img.is_file():
+            page.append(img)
+        if len(page) >= limit:
+            break
+    return page, start + len(page) < len(ranked)
 
-    Uses the date cache when it exists. Otherwise only the newest batch folders
-    are opened until ``limit`` dated photos are found.
+
+def newest_inbox_images(limit: int, before_path: str | None = None) -> tuple[list[Path], bool]:
+    """Return the next dated photos after ``before_path`` in newest-first order.
+
+    Uses the date cache when it exists. Otherwise only batch folders old enough
+    to contain the next page are opened.
     """
     limit = max(1, limit)
-    order = load_gallery_order()
-    if order:
-        ranked = sorted(order, key=lambda rel: order_sort_key(rel, order.get(rel)))
-        page: list[Path] = []
-        for rel in ranked:
-            if order.get(rel) is None:
-                continue
-            try:
-                img = resolve_data_path(rel)
-            except ValueError:
-                continue
-            if img.is_file():
-                page.append(img)
-            if len(page) >= limit:
-                break
-        return page, len(order) > limit
+    cached = _page_from_order(limit, before_path)
+    if cached is not None:
+        return cached
+    cursor_created = ""
+    if before_path:
+        try:
+            cursor_created = _sidecar_created_at(resolve_data_path(before_path)) or ""
+        except ValueError:
+            cursor_created = ""
+    cursor_day = cursor_created[:10]
+    cursor_key = order_sort_key(before_path, cursor_created) if before_path else None
 
     PHOTOS_INBOX_DIR.mkdir(parents=True, exist_ok=True)
     folders = [p for p in PHOTOS_INBOX_DIR.iterdir() if p.is_dir() and not p.name.startswith("_")]
@@ -207,14 +227,20 @@ def newest_inbox_images(limit: int) -> tuple[list[Path], bool]:
     found: list[tuple[str, Path]] = []
     scanned_all = True
     for folder in folders:
+        if cursor_day and folder != PHOTOS_INBOX_DIR and folder.name[:10] > cursor_day:
+            continue
         children = loose if folder == PHOTOS_INBOX_DIR else folder.rglob("*")
         for img in children:
             if not img.is_file() or not is_image_file(img) or "thumbs" in img.parts:
                 continue
             created = _sidecar_created_at(img)
-            if created:
-                found.append((created, img))
-        if len(found) >= limit:
+            if not created:
+                continue
+            rel = img.relative_to(DATA_DIR).as_posix()
+            if cursor_key is not None and order_sort_key(rel, created) <= cursor_key:
+                continue
+            found.append((created, img))
+        if len(found) >= limit and folder != PHOTOS_INBOX_DIR and folder.name[:10] < cursor_day:
             scanned_all = False
             break
 

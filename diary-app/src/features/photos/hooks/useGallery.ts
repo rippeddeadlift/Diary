@@ -3,6 +3,7 @@ import { listGallery } from '@/api/photos'
 import type { GalleryItem } from '@/types/photos'
 
 const PAGE = 48
+const NEXT_PAGE = 120
 
 export function useGallery() {
   const [items, setItems] = useState<GalleryItem[]>([])
@@ -28,11 +29,20 @@ export function useGallery() {
       if (!first.hasMore) return
 
       setLoadingMore(true)
-      // One full request writes the path/date cache and replaces the provisional pages.
-      const all = await listGallery()
-      if (gen.current !== id) return
-      setItems(all.items)
-      setTotal(all.total)
+      let before = first.items[first.items.length - 1]?.path
+      let hasMore = true
+      while (hasMore && before) {
+        const page = await listGallery({ before, limit: NEXT_PAGE })
+        if (gen.current !== id) return
+        if (page.items.length === 0) break
+        before = page.items[page.items.length - 1]?.path
+        hasMore = page.hasMore
+        setItems((prev) => {
+          const seen = new Set(prev.map((it) => it.path))
+          return [...prev, ...page.items.filter((it) => !seen.has(it.path))]
+        })
+        if (page.total != null) setTotal(page.total)
+      }
     } catch (e) {
       if (gen.current !== id) return
       setError(e instanceof Error ? e.message : String(e))

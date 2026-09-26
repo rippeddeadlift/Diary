@@ -180,7 +180,8 @@ def _gallery_item_for(img: Path) -> GalleryItem | None:
 
 
 @app.get("/api/photos/inbox/all", response_model=GalleryListResponse)
-def list_inbox_all(offset: int = 0, limit: int | None = None):
+def list_inbox_all(offset: int = 0, limit: int | None = None, before: str | None = None):
+    before_created_at = before
     """List inbox photos.
 
     Without limit, returns the full sorted list (existing callers).
@@ -195,25 +196,10 @@ def list_inbox_all(offset: int = 0, limit: int | None = None):
         order = load_gallery_order()
 
     partial = False
-    if limit is not None and order and cached_rels:
-        total = len(cached_rels)
-        ranked = sorted(cached_rels, key=lambda rel: order_sort_key(rel, order.get(rel)))
-        page_rels = ranked[offset : offset + max(1, min(limit, 500))]
-        images = [resolve_data_path(rel) for rel in page_rels]
-        # Already one page; the later slice must not apply offset again.
-        offset = 0
-    elif limit is not None and offset == 0:
-        images, partial = newest_inbox_images(max(1, min(limit, 500)))
+    if limit is not None:
+        images, partial = newest_inbox_images(max(1, min(limit, 500)), before)
         total = len(cached_rels) if cached_rels else None
-    elif limit is not None:
-        limit_n = max(1, min(limit, 500))
-        images = []
-        for img in iter_inbox_images():
-            images.append(img)
-            if len(images) >= offset + limit_n:
-                partial = True
-                break
-        total = None if partial else len(images)
+        offset = 0
     else:
         images = list_inbox_images()
         total = len(images)

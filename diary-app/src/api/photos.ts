@@ -20,10 +20,11 @@ export type GalleryPage = {
   hasMore: boolean
 }
 
-export async function listGallery(opts?: { offset?: number; limit?: number }): Promise<GalleryPage> {
+export async function listGallery(opts?: { offset?: number; limit?: number; before?: string }): Promise<GalleryPage> {
   const qs = new URLSearchParams()
   if (typeof opts?.offset === 'number') qs.set('offset', String(opts.offset))
   if (typeof opts?.limit === 'number') qs.set('limit', String(opts.limit))
+  if (opts?.before) qs.set('before', opts.before)
   const q = qs.toString()
   const res = await fetch(q ? `/api/photos/inbox/all?${q}` : '/api/photos/inbox/all')
   if (!res.ok) throw new Error(errText(res))
