@@ -1,13 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Trip } from '@/data/trips'
 import { TripList } from './components/TripList'
 import { TripView } from './components/TripView'
 import { TripsImportCard } from './components/TripsImportCard'
 import { FilterBar } from './components/FilterBar'
 import { TRIP_ACTIVITY_TAGS, type TripActivityTag } from '@/data/tagConfig'
-import { useLiveQuery } from 'dexie-react-hooks'
-import { syncTrips } from '@/lib/dexie_do/trips'
-import { db } from '@/lib/dexie_do/schema'
 
 type TripsView = { kind: 'list' } | { kind: 'trip'; trip: Trip }
 
@@ -51,31 +48,38 @@ function compareTrips(a: Trip, b: Trip, sort: SortKey): number {
 }
 
 export function TripsPage() {
-  const localTrips = useLiveQuery(() => db.trips.toArray()) || []
+  const [trips, setTrips] = useState<Trip[]>([])
 
-  const handleReload = async () => {
-    await syncTrips()
-  }
+  const handleReload = useCallback(async () => {
+    try {
+      const res = await fetch('/api/trips/meta')
+      if (!res.ok) throw new Error('Server nicht erreichbar')
+      const data: Trip[] = await res.json()
+      setTrips(data)
+    } catch (e) {
+      console.error('Trips konnten nicht geladen werden.', e)
+    }
+  }, [])
 
   useEffect(() => {
-    handleReload()
-  }, [])
+    void handleReload()
+  }, [handleReload])
 
   const [view, setView] = useState<TripsView>({ kind: 'list' })
   const [activity, setActivity] = useState<Activity>('all')
   const [sort, setSort] = useState<SortKey>('date_desc')
 
   const visibleTrips = useMemo(() => {
-    const filtered = activity === 'all' ? localTrips : localTrips.filter((t) => tripHasActivity(t, activity))
+    const filtered = activity === 'all' ? trips : trips.filter((t) => tripHasActivity(t, activity))
     const sorted = [...filtered].sort((a, b) => compareTrips(a, b, sort))
     return sorted
-  }, [activity, sort, localTrips])
+  }, [activity, sort, trips])
 
   useEffect(() => {
     if (view.kind === 'list') {
-      handleReload() 
+      void handleReload()
     }
-  }, [view.kind])  
+  }, [view.kind, handleReload])  
 
   if (view.kind === 'trip') {
     return (

@@ -64,7 +64,6 @@ def ensure_thumb(img_abs: Path, rel_under_data: str, *, max_size: int = 512) -> 
 from .models import (
     FitnessLogRequest,
     FitnessLogResponse,
-    FitnessLogResponse,
     GalleryItem,
     GalleryListResponse,
     SidecarGetResponse,
@@ -642,7 +641,6 @@ def get_all_trips_meta():
                 "meta": meta_content
             })
     
-    # 3. Das Ergebnis ist ein Array von Trips, genau wie Dexie es erwartet
     return full_data
 
 @app.post("/api/fitness/log", response_model=FitnessLogResponse)
@@ -674,6 +672,8 @@ def fitness_log(req: FitnessLogRequest):
             
         with csv_path.open("a", encoding="utf-8") as f:
             f.write(f'{today},"{req.sets}"\n')
+
+    return FitnessLogResponse()
 
 
 @app.post("/api/photos/upload", response_model=UploadResponse)
