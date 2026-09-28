@@ -80,19 +80,19 @@ export function PhotoUploadCard({ onUploaded }: { onUploaded: () => Promise<void
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Fotos – Upload</CardTitle>
+        <CardTitle>Fotos & Videos – Upload</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          Upload landet in <code>data/photos/inbox/YYYY-MM-DD_HHMM/</code>. Für jedes Bild wird automatisch ein <code>.json</code>{' '}
-          Sidecar angelegt.
+          Upload landet in <code>data/photos/inbox/YYYY-MM-DD_HHMM/</code>. Für jedes Foto und Video wird automatisch ein{' '}
+          <code>.json</code> Sidecar angelegt. Videos: mp4, mov, m4v, webm.
         </p>
 
         {/* Versteckte Inputs */}
         <div className="hidden">
           <input
             type="file"
-            accept="image/*,.zip,application/zip"
+            accept="image/*,video/mp4,video/quicktime,video/webm,.mp4,.mov,.m4v,.webm,.zip,application/zip"
             multiple
             ref={fileInputRef}
             onChange={(e) => setFiles(e.target.files)}
@@ -107,7 +107,7 @@ export function PhotoUploadCard({ onUploaded }: { onUploaded: () => Promise<void
               if (!rawFiles || rawFiles.length === 0) return;
 
               // Erlaubte Endungen
-              const allowedExts = ['.jpg', '.jpeg', '.png', '.heic', '.heif'];
+              const allowedExts = ['.jpg', '.jpeg', '.png', '.heic', '.heif', '.mp4', '.mov', '.m4v', '.webm'];
 
               // Filtere nach Dateiendung statt MIME-Type
               const validFiles = Array.from(rawFiles).filter((f) => {

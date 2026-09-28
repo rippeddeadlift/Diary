@@ -18,7 +18,7 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from .config import DATA_DIR, PHOTOS_INBOX_DIR, ROOT
+from .config import DATA_DIR, MEDIA_EXTS, PHOTOS_INBOX_DIR, ROOT, VIDEO_EXTS
 
 TRASH_DIR = DATA_DIR / "photos" / "_trash"
 THUMBS_DIR = DATA_DIR / "photos" / "_thumbs"
@@ -34,8 +34,43 @@ def thumb_path_for(rel_under_data: str) -> Path:
     return (THUMBS_DIR / rel_under_data).resolve()
 
 
+def ensure_video_poster(video_abs: Path, rel_under_data: str) -> None:
+    """Grab one JPEG frame for the gallery tile. Needs ffmpeg on PATH."""
+    dst = thumb_path_for(rel_under_data).with_suffix(".jpg")
+    if dst.exists():
+        return
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-ss",
+                "0.5",
+                "-i",
+                str(video_abs),
+                "-frames:v",
+                "1",
+                "-vf",
+                "scale=512:512:force_original_aspect_ratio=increase,crop=512:512",
+                str(dst),
+            ],
+            capture_output=True,
+            timeout=30,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return
+    if dst.exists() and dst.stat().st_size == 0:
+        dst.unlink(missing_ok=True)
+
+
 def ensure_thumb(img_abs: Path, rel_under_data: str, *, max_size: int = 512) -> None:
     """Best-effort thumbnail generation. Creates THUMBS_DIR/<rel_under_data>."""
+
+    if img_abs.suffix.lower() in VIDEO_EXTS:
+        ensure_video_poster(img_abs, rel_under_data)
+        return
 
     dst = thumb_path_for(rel_under_data)
     if dst.exists():
@@ -85,6 +120,7 @@ from .photos_repo import (
     batch_folder_name,
     build_sidecar_for_image,
     iter_inbox_images,
+    is_live_photo_video_file,
     list_inbox_images,
     newest_inbox_images,
     load_or_init_sidecar_for_image,
@@ -103,6 +139,9 @@ from .photos_repo import (
     save_gallery_order,
     load_gallery_paths,
     save_gallery_paths,
+    remember_gallery_items,
+    forget_gallery_items,
+    sync_missing_gallery_items_once,
     order_sort_key,
 )
 
@@ -110,7 +149,8 @@ APP_TITLE = "Diary Upload Server"
 
 app = FastAPI(title=APP_TITLE)
 
-# Read-only access to Diary/data for the gallery (served under /files)
+# Read-only access to Diary/data for the gallery (served under /files).
+# Starlette StaticFiles answers Range requests, which <video> needs in order to seek.
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/files", StaticFiles(directory=str(DATA_DIR)), name="files")
 
@@ -122,7 +162,10 @@ def health():
 
 def _gallery_item_for(img: Path) -> GalleryItem | None:
     rel = img.relative_to(DATA_DIR).as_posix()
+    kind = "video" if img.suffix.lower() in VIDEO_EXTS else "image"
     thumb_rel = f"photos/_thumbs/{rel}"
+    if kind == "video":
+        thumb_rel = str(Path(thumb_rel).with_suffix(".jpg")).replace("\\", "/")
     thumb_abs = (DATA_DIR / thumb_rel).resolve()
     thumb_exists = thumb_abs.exists()
     sc_path = sidecar_path_for(img)
@@ -163,6 +206,7 @@ def _gallery_item_for(img: Path) -> GalleryItem | None:
         return GalleryItem(
             path=rel,
             url=f"/files/{rel}",
+            kind=kind,
             hasSidecar=sc_path.exists(),
             sidecarPath=sc_path.relative_to(DATA_DIR).as_posix() if sc_path.exists() else None,
             thumbUrl=f"/files/{thumb_rel}" if thumb_exists else None,
@@ -189,6 +233,15 @@ def list_inbox_all(offset: int = 0, limit: int | None = None, before: str | None
     offset = max(0, offset)
     order: dict[str, str | None] = {}
     cached_rels = load_gallery_paths() if limit is not None else []
+    # Uploads update the cache themselves. Catch files dropped on disk only
+    # once per process — a full inbox walk on every page made the first 48 slow.
+    if limit is not None and (cached_rels or GALLERY_ORDER_PATH.exists()):
+        try:
+            added = sync_missing_gallery_items_once()
+        except Exception:
+            added = 0
+        if added:
+            cached_rels = load_gallery_paths()
     # A sorted page needs a date for every path. Use it only when the last full
     # pass already wrote one; otherwise scan newest folders only.
     if limit is not None and cached_rels and GALLERY_ORDER_PATH.exists():
@@ -212,14 +265,7 @@ def list_inbox_all(offset: int = 0, limit: int | None = None, before: str | None
         has_more = False
     else:
         limit = max(1, min(limit, 500))
-        if order:
-            ranked = sorted(
-                ((p.relative_to(DATA_DIR).as_posix(), p) for p in images),
-                key=lambda pair: order_sort_key(pair[0], order.get(pair[0])),
-            )
-            page = [p for _, p in ranked[offset : offset + limit]]
-        else:
-            page = images[offset : offset + limit]
+        page = images[:limit]
         has_more = partial
 
     items: list[GalleryItem] = []
@@ -414,6 +460,7 @@ def trash_photos(req: TrashPhotosRequest):
     sha_idx = load_sha256_index()
 
     trashed = 0
+    trashed_rels: list[str] = []
     for rel in req.paths:
         try:
             img = resolve_data_path(rel)
@@ -486,9 +533,14 @@ def trash_photos(req: TrashPhotosRequest):
             sha_idx.pop(h, None)
 
         trashed += 1
+        trashed_rels.append(rel)
 
     try:
         save_sha256_index(sha_idx)
+    except Exception:
+        pass
+    try:
+        forget_gallery_items(trashed_rels)
     except Exception:
         pass
 
@@ -689,8 +741,14 @@ async def upload_photos(files: List[UploadFile] = File(...)):
     sha_idx = load_sha256_index()
 
     saved: list[UploadSavedItem] = []
+    indexed: list[tuple[str, str | None]] = []
     duplicates_skipped = 0
+    skipped_non_images = 0
     for f in files:
+        ext = Path(f.filename or "").suffix.lower()
+        if ext not in MEDIA_EXTS and ext not in {".heif"}:
+            skipped_non_images += 1
+            continue
         out_name = unique_filename(prefix, f.filename or "upload")
         out_path = batch_dir / out_name
 
@@ -708,22 +766,30 @@ async def upload_photos(files: List[UploadFile] = File(...)):
             with Image.open(out_path) as im:
                 # 1. EXIF-Daten direkt beim Öffnen sichern
                 exif_data = im.info.get("exif")
-                
+
                 im = ImageOps.exif_transpose(im)
                 im = im.convert("RGB")
-                
+
                 jpg_filename = f"{out_path.stem}.jpg"
                 jpg_name = unique_filename(prefix, jpg_filename)
                 jpg_path = batch_dir / jpg_name
-                
+
                 # 2. EXIF-Daten beim Speichern wieder einfügen
                 if exif_data:
                     im.save(jpg_path, 'JPEG', quality=92, optimize=True, progressive=True, exif=exif_data)
                 else:
                     im.save(jpg_path, 'JPEG', quality=92, optimize=True, progressive=True)
-                    
+
             out_path.unlink()  # Remove HEIC
             out_path = jpg_path  # Use JPG
+
+        if is_live_photo_video_file(out_path):
+            try:
+                out_path.unlink(missing_ok=True)
+            except Exception:
+                pass
+            skipped_non_images += 1
+            continue
 
         # 2) Compute hash and dedupe
         try:
@@ -761,29 +827,36 @@ async def upload_photos(files: List[UploadFile] = File(...)):
         sc_path = sidecar_path_for(out_path)
         save_sidecar(sc_path, sidecar)
 
+        rel = out_path.relative_to(DATA_DIR).as_posix()
         if h:
-            rel = out_path.relative_to(DATA_DIR).as_posix()
             sha_idx[h] = rel
+        created = sidecar.get("createdAt")
+        indexed.append((rel, str(created) if created else None))
 
         saved.append(
             UploadSavedItem(
-                file=str(out_path.relative_to(ROOT)).replace("\\", "/"),
-                sidecar=str(sc_path.relative_to(ROOT)).replace("\\", "/"),
+                file=str(out_path.relative_to(DATA_DIR)).replace("\\", "/"),
+                sidecar=str(sc_path.relative_to(DATA_DIR)).replace("\\", "/"),
                 originalName=f.filename,
             )
         )
 
-    # Persist hash index
+    # Persist hash index and make the new files visible to the paged gallery.
     try:
         save_sha256_index(sha_idx)
     except Exception:
         pass
+    try:
+        remember_gallery_items(indexed)
+    except Exception:
+        pass
 
     return UploadResponse(
-        batch=str(batch_dir.relative_to(ROOT)).replace("\\", "/"),
+        batch=str(batch_dir.relative_to(DATA_DIR)).replace("\\", "/"),
         count=len(saved),
         saved=saved,
         duplicatesSkipped=duplicates_skipped,
+        skippedNonImages=skipped_non_images,
     )
 
 
@@ -807,6 +880,7 @@ async def upload_photos_zip(file: UploadFile = File(...)):
     sha_idx = load_sha256_index()
 
     saved: list[UploadSavedItem] = []
+    indexed: list[tuple[str, str | None]] = []
     duplicates_skipped = 0
     skipped_non_images = 0
     errors: list[str] = []
@@ -843,7 +917,7 @@ async def upload_photos_zip(file: UploadFile = File(...)):
             if uncompressed > MAX_UNCOMPRESSED_BYTES:
                 return JSONResponse({"ok": False, "error": "ZIP contents too large"}, status_code=413)
 
-            allowed = {".jpg", ".jpeg", ".png", ".webp"}
+            allowed = MEDIA_EXTS | {".heif"}
 
             for info in infos:
                 try:
@@ -859,6 +933,14 @@ async def upload_photos_zip(file: UploadFile = File(...)):
                     # Extract file to out_path
                     with zf.open(info, "r") as src, out_path.open("wb") as dst:
                         shutil.copyfileobj(src, dst, length=1024 * 1024)
+
+                    if is_live_photo_video_file(out_path):
+                        try:
+                            out_path.unlink(missing_ok=True)
+                        except Exception:
+                            pass
+                        skipped_non_images += 1
+                        continue
 
                     # Hash + dedupe
                     try:
@@ -893,13 +975,16 @@ async def upload_photos_zip(file: UploadFile = File(...)):
                     sc_path = sidecar_path_for(out_path)
                     save_sidecar(sc_path, sidecar)
 
+                    rel = out_path.relative_to(DATA_DIR).as_posix()
                     if h:
-                        sha_idx[h] = out_path.relative_to(DATA_DIR).as_posix()
+                        sha_idx[h] = rel
+                    created = sidecar.get("createdAt")
+                    indexed.append((rel, str(created) if created else None))
 
                     saved.append(
                         UploadSavedItem(
-                            file=str(out_path.relative_to(ROOT)).replace("\\", "/"),
-                            sidecar=str(sc_path.relative_to(ROOT)).replace("\\", "/"),
+                            file=str(out_path.relative_to(DATA_DIR)).replace("\\", "/"),
+                            sidecar=str(sc_path.relative_to(DATA_DIR)).replace("\\", "/"),
                             originalName=base,
                         )
                     )
@@ -907,14 +992,18 @@ async def upload_photos_zip(file: UploadFile = File(...)):
                     errors.append(f"{info.filename}: {e}")
                     continue
 
-    # Persist hash index
+    # Persist hash index and make the new files visible to the paged gallery.
     try:
         save_sha256_index(sha_idx)
     except Exception:
         pass
+    try:
+        remember_gallery_items(indexed)
+    except Exception:
+        pass
 
     return UploadResponse(
-        batch=str(batch_dir.relative_to(ROOT)).replace("\\", "/"),
+        batch=str(batch_dir.relative_to(DATA_DIR)).replace("\\", "/"),
         count=len(saved),
         saved=saved,
         duplicatesSkipped=duplicates_skipped,

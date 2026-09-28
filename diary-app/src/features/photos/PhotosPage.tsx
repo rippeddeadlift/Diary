@@ -68,7 +68,7 @@ export function PhotosPage() {
             <div>
               <CardTitle className="text-base">Galerie</CardTitle>
               <div className="text-xs text-muted-foreground">
-                {filtered.length} / {galleryTotal != null ? galleryTotal : gallery.length} Fotos
+                {filtered.length} Fotos und Videos 
                 {loadingMore ? ' …' : ''}
               </div>
             </div>

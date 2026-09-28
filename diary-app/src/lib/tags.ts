@@ -19,6 +19,7 @@ export function normalizeGalleryItem(raw: any): GalleryItem {
   return {
     path: raw.path,
     url: raw.url,
+    kind: raw.kind === 'video' ? 'video' : 'image',
     hasSidecar: raw.hasSidecar,
     thumbUrl: raw.thumbUrl ?? null,
     thumbExists: raw.thumbExists ?? false,

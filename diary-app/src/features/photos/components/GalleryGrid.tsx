@@ -2,6 +2,7 @@ import { memo, useEffect, useState } from 'react'
 import { useWindowVirtualizer } from '@tanstack/react-virtual'
 
 import type { GalleryItem } from '@/types/photos'
+import { isVideoItem } from '@/lib/media'
 import { formatDateTimeEU } from '@/lib/format'
 import { useGalleryColumns } from '../hooks/useGalleryColumns'
 import { cn } from '@/lib/utils'
@@ -35,15 +36,23 @@ const PhotoCard = memo(({
           }
         }}
       >
-        <img
-          src={src}
-          alt={src ? it.path : ""} // <-- Nur anzeigen, wenn src geladen wird
-          decoding="async"
-          className={cn(
-            "block aspect-square w-full object-cover bg-muted transition-opacity duration-300",
-            src ? "opacity-100" : "opacity-0"
-          )}
-        />
+        {src ? (
+          <img
+            src={src}
+            alt={it.path}
+            decoding="async"
+            className="block aspect-square w-full object-cover bg-muted opacity-100 transition-opacity duration-300"
+          />
+        ) : (
+          <div className="flex aspect-square w-full items-center justify-center bg-muted text-xs text-muted-foreground">
+            {isVideoItem(it) ? 'Video' : ''}
+          </div>
+        )}
+        {isVideoItem(it) ? (
+          <span className="pointer-events-none absolute bottom-10 left-2 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-medium text-white">
+            ▶ Video
+          </span>
+        ) : null}
       </div>
 
       {/* Hover/selection circle */}
@@ -122,7 +131,7 @@ export function GalleryGrid({
             >
               {rowItems.map((it) => {
                 const isSelected = selected.has(it.path)
-                const imgUrl = it.thumbExists && it.thumbUrl ? it.thumbUrl : it.url
+                const imgUrl = it.thumbExists && it.thumbUrl ? it.thumbUrl : isVideoItem(it) ? '' : it.url
 
                 return (
                   <PhotoCard

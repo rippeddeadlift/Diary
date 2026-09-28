@@ -5,6 +5,7 @@ export type PhotoLocation = { lat: number; lon: number } | null
 export type GalleryItem = {
   path: string
   url: string
+  kind?: 'image' | 'video'
   hasSidecar: boolean
 
   thumbUrl?: string | null
@@ -20,6 +21,7 @@ export type GalleryItem = {
 export type RawGalleryItem = {
   path: string
   url: string
+  kind?: 'image' | 'video'
   hasSidecar: boolean
   thumbUrl?: string | null
   thumbExists?: boolean

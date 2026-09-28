@@ -16,6 +16,7 @@ class GalleryItem(BaseModel):
     url: str
     hasSidecar: bool
     sidecarPath: Optional[str] = None
+    kind: str = "image"  # image | video
 
     thumbUrl: Optional[str] = None
     thumbExists: bool = False

@@ -8,6 +8,7 @@ import { PEOPLE, PHOTO_TAGS } from '@/data/tagConfig'
 import { TagChips } from './TagChips'
 import { Switch } from '@/components/ui/switch'
 import { FullScreenPhotoViewer } from './FullScreenPhotoViewer'
+import { isVideoItem } from '@/lib/media'
 import { Maximize2 } from 'lucide-react'
 
 
@@ -202,7 +203,18 @@ export function PhotoViewerDialog({
           <div className="grid max-h-[90vh] grid-cols-1 overflow-auto sm:grid-cols-2">
             <div className="p-4">
               <div className="relative overflow-hidden rounded-md border bg-muted">
-                <img src={item.url} alt={item.path} className="block h-auto w-full object-contain" />
+                {isVideoItem(item) ? (
+                  <video
+                    key={item.path}
+                    src={item.url}
+                    poster={item.thumbUrl ?? undefined}
+                    controls
+                    playsInline
+                    className="block max-h-[70vh] w-full bg-black"
+                  />
+                ) : (
+                  <img src={item.url} alt={item.path} className="block h-auto w-full object-contain" />
+                )}
 
                 <div className="absolute inset-x-0 top-2 flex items-center justify-between px-2">
                   <button

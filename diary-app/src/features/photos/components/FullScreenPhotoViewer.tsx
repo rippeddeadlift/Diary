@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import type { GalleryItem } from '@/types/photos'
+import { isVideoItem } from '@/lib/media'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 
 export function FullScreenPhotoViewer({
@@ -44,12 +45,24 @@ export function FullScreenPhotoViewer({
         className="relative flex h-full w-full items-center justify-center"
         onClick={(e) => e.stopPropagation()}
       >
-        <img
-          src={item.url}
-          alt={item.path}
-          className="max-h-[100dvh] max-w-[100vw] select-none object-contain"
-          draggable={false}
-        />
+        {isVideoItem(item) ? (
+          <video
+            key={item.path}
+            src={item.url}
+            poster={item.thumbUrl ?? undefined}
+            controls
+            autoPlay
+            playsInline
+            className="max-h-[100dvh] max-w-[100vw] bg-black"
+          />
+        ) : (
+          <img
+            src={item.url}
+            alt={item.path}
+            className="max-h-[100dvh] max-w-[100vw] select-none object-contain"
+            draggable={false}
+          />
+        )}
 
         {/* Close button */}
         <button
