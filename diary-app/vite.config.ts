@@ -27,8 +27,8 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         runtimeCaching: [
           {
-            // Cacht deine Thumbnails und Bilder (aus deinem /files/ Proxy)
-            urlPattern: /^\/files\/.*/i,
+            // Cache thumbnails and media served by the local backend.
+            urlPattern: /^\/(files|media)\/.*/i,
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'diary-images',
@@ -122,6 +122,12 @@ export default defineConfig({
         changeOrigin: true,
         timeout: 600000,
         proxyTimeout: 600000,
+      },
+      '/media': {
+        target: 'http://127.0.0.1:8787',
+        changeOrigin: true,
+        timeout: 600000,
+        proxyTimeout: 600000,
       }
     }
   },
@@ -135,7 +141,11 @@ export default defineConfig({
       '/files': {
         target: 'http://127.0.0.1:8787',
         changeOrigin: true,
-      }
+      },
+      '/media': {
+        target: 'http://127.0.0.1:8787',
+        changeOrigin: true,
+      },
     }
   },
   resolve: {

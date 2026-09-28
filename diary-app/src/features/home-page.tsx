@@ -1,22 +1,22 @@
-export function MenuPage({
-  onTrips,
-  onPhotos,
-  onFitness
+import type { FEATURE_ITEMS, FeatureId } from './registry'
+
+export function HomePage({
+  features,
+  onSelect
 }: {
-  onTrips: () => void
-  onPhotos: () => void
-  onFitness: () => void
+  features: typeof FEATURE_ITEMS
+  onSelect: (feature: FeatureId) => void
 }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-10 py-10 text-center overflow-hidden">
-      <MenuItem title="FOTOS" onClick={onPhotos} />
-      <MenuItem title="TOUREN" onClick={onTrips} />
-      <MenuItem title="FITNESS" onClick={onFitness} />
+      {features.map((feature) => (
+        <HomeMenuItem key={feature.id} title={feature.label.toUpperCase()} onClick={() => onSelect(feature.id)} />
+      ))}
     </div>
   )
 }
 
-function MenuItem({
+function HomeMenuItem({
   title,
   onClick
 }: {
