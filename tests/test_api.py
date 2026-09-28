@@ -79,6 +79,56 @@ class TestPhotosEndpoints:
         assert [it["path"].rsplit("/", 1)[-1] for it in rest["items"]] == ["nodate.jpg"]
         assert rest["hasMore"] is False
 
+    def test_paged_gallery_includes_photos_added_after_cache(self, client, temp_data_dir):
+        """Folder/file uploads must show up even when the date cache already exists."""
+        inbox = temp_data_dir / "photos" / "inbox"
+        (inbox / "old.jpg").write_bytes(b"not-a-real-image")
+        (inbox / "old.jpg.json").write_text('{"createdAt":"2020-01-01T12:00:00"}', encoding="utf-8")
+        client.get("/api/photos/inbox/all")
+
+        batch = inbox / "2026-09-28_0010"
+        batch.mkdir()
+        (batch / "uploaded.jpg").write_bytes(b"not-a-real-image")
+        (batch / "uploaded.jpg.json").write_text(
+            '{"createdAt":"2021-08-11T14:09:17+02:00"}',
+            encoding="utf-8",
+        )
+
+        page = client.get("/api/photos/inbox/all?limit=10").json()
+        names = [it["path"].rsplit("/", 1)[-1] for it in page["items"]]
+        assert names[0] == "uploaded.jpg"
+        assert "old.jpg" in names
+        assert page["total"] == 2
+
+    def test_live_photo_mov_is_rejected(self, client, temp_data_dir):
+        payload = b"\x00\x00\x00\x00ftypqt  com.apple.quicktime.content.identifier"
+        up = client.post(
+            "/api/photos/upload",
+            files=[("files", ("IMG_8834.mov", payload, "video/quicktime"))],
+        )
+        assert up.status_code == 200, up.text
+        assert up.json()["count"] == 0, up.text
+
+        page = client.get("/api/photos/inbox/all").json()
+        assert page["items"] == []
+        assert list((temp_data_dir / "photos" / "inbox").rglob("IMG_8834.mov")) == []
+
+    def test_video_upload_is_listed_and_playable(self, client, temp_data_dir, monkeypatch):
+        monkeypatch.setattr("server.main.subprocess.run", lambda *a, **k: None)
+        payload = b"\x00\x00\x00\x18ftypmp42"
+        up = client.post(
+            "/api/photos/upload",
+            files=[("files", ("clip.mp4", payload, "video/mp4"))],
+        )
+        assert up.status_code == 200, up.text
+        assert up.json()["count"] == 1, up.text
+
+        page = client.get("/api/photos/inbox/all").json()
+        item = next(it for it in page["items"] if it["path"].endswith(".mp4"))
+        assert item["kind"] == "video"
+        assert item["url"] == f"/files/{item['path']}"
+        assert (temp_data_dir / item["path"]).read_bytes() == payload
+
     def test_suggest_photos_invalid_date(self, client):
         """Test photo suggestion with invalid date."""
         response = client.get("/api/photos/suggest?date=invalid")
@@ -115,7 +165,7 @@ class TestTripsEndpoints:
     """Tests for trip-related endpoints."""
 
     def test_update_trip_meta_no_index(self, client, temp_data_dir):
-        """Trip meta update currently always returns ok=True (no-op backend)."""
+        """Return not found when the trips index is missing."""
         response = client.post(
             "/api/trips/meta",
             json={
@@ -124,9 +174,10 @@ class TestTripsEndpoints:
                 "tags": [],
             },
         )
-        assert response.status_code == 200
+        assert response.status_code == 404
         data = response.json()
-        assert data.get("ok") is True
+        assert data["ok"] is False
+        assert data["error"] == "Trips index not found"
 
     def test_trash_trips_no_index(self, client, temp_data_dir):
         """Test trashing trips when index doesn't exist."""
