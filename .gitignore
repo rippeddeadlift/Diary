@@ -11,11 +11,10 @@ server/.venv/
 
 # Local photo inbox content (optional: keep out of git; decide later)
 data/photos/
+# Personal trip files and GPS tracks
+data/trips/
 # Thumbnails cache (generated)
 data/photos/_thumbs/
-
-# Trips trash (deleted trips)
-data/trips/_trash/
 
 # GPX import archive
 /data/import/gpx/_done/
