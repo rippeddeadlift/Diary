@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useWindowVirtualizer } from '@tanstack/react-virtual'
 
 import type { GalleryItem } from '@/types/photos'
@@ -15,6 +15,7 @@ const PhotoCard = memo(({
   selectionMode: boolean; onToggleSelect: (it: GalleryItem) => void; onSelect: (it: GalleryItem) => void
 }) => {
   const [src, setSrc] = useState<string | undefined>(undefined)
+  const tagCount = (it.people?.length ?? 0) + (it.tags?.length ?? 0)
   useEffect(() => {
     setSrc(imgUrl)
   }, [imgUrl])
@@ -78,7 +79,7 @@ const PhotoCard = memo(({
       </button>
 
       <div className="flex items-center justify-between gap-2 p-2 text-xs text-muted-foreground">
-        {it.tags?.length || it.people?.length ? null : <span>0 tags</span>}
+        <span>{tagCount} {tagCount === 1 ? 'tag' : 'tags'}</span>
         {it.createdAt ? <span className="font-mono">{formatDateTimeEU(it.createdAt)}</span> : null}
       </div>
     </div>
@@ -98,57 +99,248 @@ export function GalleryGrid({
   onToggleSelect: (it: GalleryItem) => void
 }) {
   const cols = useGalleryColumns()
+  const gridRef = useRef<HTMLDivElement>(null)
+  const timelineRef = useRef<HTMLDivElement>(null)
+  const [activeIndex, setActiveIndex] = useState(0)
+  const [timelineFocused, setTimelineFocused] = useState(false)
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
 
   const rowCount = Math.ceil(items.length / cols)
 
   const rowVirtualizer = useWindowVirtualizer({
     count: rowCount,
     estimateSize: () => 280,
-    overscan: 2  
+    overscan: 2
   })
 
   const virtualRows = rowVirtualizer.getVirtualItems()
 
+  const dateMarks = useMemo(() => {
+    const marks: { index: number; key: string; label: string; year: string }[] = []
+    let previousMonth = ''
+    let hasUndated = false
+
+    items.forEach((it, index) => {
+      if (!it.createdAt) {
+        if (!hasUndated) {
+          marks.push({ index, key: 'undated', label: 'Ohne Datum', year: '' })
+          hasUndated = true
+        }
+        return
+      }
+
+      const date = new Date(it.createdAt)
+      if (Number.isNaN(date.getTime())) return
+
+      const key = `${date.getFullYear()}-${date.getMonth()}`
+      if (key !== previousMonth) {
+        marks.push({
+          index,
+          key,
+          label: date.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' }),
+          year: String(date.getFullYear())
+        })
+        previousMonth = key
+      }
+    })
+
+    return marks
+  }, [items])
+
+  const currentItem = items[Math.min(activeIndex, Math.max(items.length - 1, 0))]
+  const currentDate = currentItem?.createdAt ? new Date(currentItem.createdAt) : null
+  const currentLabel = currentDate && !Number.isNaN(currentDate.getTime())
+    ? currentDate.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })
+    : 'Ohne Datum'
+  const previewIndex = hoveredIndex ?? Math.min(activeIndex, Math.max(items.length - 1, 0))
+  const previewPercentage = items.length > 1 ? (previewIndex / (items.length - 1)) * 100 : 0
+  const previewDate = items[previewIndex]?.createdAt ? new Date(items[previewIndex].createdAt) : null
+  const previewLabel = previewDate && !Number.isNaN(previewDate.getTime())
+    ? previewDate.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })
+    : 'Ohne Datum'
+
+  function scrollToItem(index: number) {
+    const nextIndex = Math.max(0, Math.min(index, items.length - 1))
+    setActiveIndex(nextIndex)
+    rowVirtualizer.scrollToIndex(Math.floor(nextIndex / cols), { align: 'start' })
+  }
+
+  function scrollToTimelinePosition(clientY: number) {
+    const track = timelineRef.current
+    if (!track || items.length === 0) return
+    const bounds = track.getBoundingClientRect()
+    const ratio = Math.max(0, Math.min(1, (clientY - bounds.top) / bounds.height))
+    scrollToItem(Math.round(ratio * (items.length - 1)))
+  }
+  const getIndexFromClientY = (clientY: number) => {
+    if (!timelineRef.current || items.length === 0) return 0
+    const rect = timelineRef.current.getBoundingClientRect()
+    const relativeY = Math.max(0, Math.min(clientY - rect.top, rect.height))
+    const percentage = relativeY / rect.height
+    return Math.round(percentage * (items.length - 1))
+  }
+
+  useEffect(() => {
+    const updateActiveIndex = () => {
+      const rows = gridRef.current?.querySelectorAll<HTMLElement>('[data-gallery-row]')
+      if (!rows?.length) return
+
+      const anchor = window.innerHeight * 0.4
+      const visibleRow = Array.from(rows).find((row) => row.getBoundingClientRect().bottom > anchor)
+      const rowIndex = Number((visibleRow ?? rows[rows.length - 1]).dataset.galleryRowIndex)
+      const nextIndex = Math.min(rowIndex * cols, items.length - 1)
+      setActiveIndex((current) => current === nextIndex ? current : nextIndex)
+    }
+
+    let frame = 0
+    const onScroll = () => {
+      window.cancelAnimationFrame(frame)
+      frame = window.requestAnimationFrame(updateActiveIndex)
+    }
+
+    updateActiveIndex()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+    }
+  }, [cols, items])
+
   return (
-    <div
-      className="relative w-full"
-      style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
-    >
-      {virtualRows.map((vr) => {
-        const rowIndex = vr.index
-        const start = rowIndex * cols
-        const rowItems = items.slice(start, start + cols)
+    <div className="relative w-full">
+      <div
+        ref={gridRef}
+        className="relative w-full"
+        style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
+      >
+        {virtualRows.map((vr) => {
+          const rowIndex = vr.index
+          const start = rowIndex * cols
+          const rowItems = items.slice(start, start + cols)
 
-        return (
-          <div
-            key={vr.key}
-            className="absolute left-0 w-full"
-            style={{ transform: `translateY(${vr.start}px)` }}
-          >
+          return (
             <div
-              className="grid gap-2 w-full"
-              style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+              key={vr.key}
+              data-gallery-row
+              data-gallery-row-index={rowIndex}
+              className="absolute left-0 w-full"
+              style={{ transform: `translateY(${vr.start}px)` }}
             >
-              {rowItems.map((it) => {
-                const isSelected = selected.has(it.path)
-                const imgUrl = it.thumbExists && it.thumbUrl ? it.thumbUrl : isVideoItem(it) ? '' : it.url
+              <div
+                className="grid w-full gap-2"
+                style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+              >
+                {rowItems.map((it) => {
+                  const isSelected = selected.has(it.path)
+                  const imgUrl = it.thumbExists && it.thumbUrl ? it.thumbUrl : isVideoItem(it) ? '' : it.url
 
-                return (
-                  <PhotoCard
-                    key={it.path}
-                    it={it}
-                    isSelected={isSelected}
-                    imgUrl={imgUrl}
-                    selectionMode={selectionMode}
-                    onToggleSelect={onToggleSelect}
-                    onSelect={onSelect}
-                  />
-                )
-              })}
+                  return (
+                    <PhotoCard
+                      key={it.path}
+                      it={it}
+                      isSelected={isSelected}
+                      imgUrl={imgUrl}
+                      selectionMode={selectionMode}
+                      onToggleSelect={onToggleSelect}
+                      onSelect={onSelect}
+                    />
+                  )
+                })}
+              </div>
             </div>
+          )
+        })}
+      </div>
+
+      {items.length > 0 ? (
+        <aside className="fixed right-3 top-[20vh] z-40 h-[60vh] w-9 select-none sm:right-4 sm:w-11">
+          <div
+            ref={timelineRef}
+            role="slider"
+            tabIndex={0}
+            aria-label="In der Fotogalerie nach Datum navigieren"
+            aria-valuemin={0}
+            aria-valuemax={items.length - 1}
+            aria-valuenow={Math.min(activeIndex, items.length - 1)}
+            aria-valuetext={currentLabel}
+            className="absolute inset-0 cursor-pointer touch-none rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onPointerDown={(event) => {
+              event.currentTarget.setPointerCapture(event.pointerId)
+              setTimelineFocused(true)
+              setHoveredIndex(getIndexFromClientY(event.clientY))
+              scrollToTimelinePosition(event.clientY)
+            }}
+            onPointerMove={(event) => {
+              setHoveredIndex(getIndexFromClientY(event.clientY))
+              if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                scrollToTimelinePosition(event.clientY)
+              }
+            }}
+            onPointerUp={(event) => {
+              event.currentTarget.releasePointerCapture(event.pointerId)
+            }}
+            onPointerCancel={() => setTimelineFocused(false)}
+            onPointerEnter={() => setTimelineFocused(true)}
+            onPointerLeave={(event) => {
+              if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
+                setTimelineFocused(false)
+                setHoveredIndex(null)
+              }
+            }}
+            onFocus={() => setTimelineFocused(true)}
+            onBlur={() => setTimelineFocused(false)}
+            onKeyDown={(event) => {
+              const step = event.shiftKey ? cols * 10 : cols
+              if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+                event.preventDefault()
+                scrollToItem(activeIndex - step)
+              } else if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
+                event.preventDefault()
+                scrollToItem(activeIndex + step)
+              } else if (event.key === 'Home') {
+                event.preventDefault()
+                scrollToItem(0)
+              } else if (event.key === 'End') {
+                event.preventDefault()
+                scrollToItem(items.length - 1)
+              }
+            }}
+          >
+            <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border" />
+            {dateMarks.map((mark) => (
+              <div
+                key={mark.key}
+                aria-hidden="true"
+                className="absolute left-1/2 flex -translate-x-1/2 items-center"
+                style={{ top: `${items.length > 1 ? (mark.index / (items.length - 1)) * 100 : 0}%` }}
+              >
+                <span className={mark.year ? 'h-px w-2 bg-muted-foreground' : 'h-px w-1 bg-border'} />
+                {mark.year && mark.index === dateMarks.find((entry) => entry.year === mark.year)?.index ? (
+                  <span className="absolute right-3 text-[9px] leading-none text-muted-foreground sm:right-4 sm:text-[10px]">
+                    {mark.year}
+                  </span>
+                ) : null}
+              </div>
+            ))}
+            <div
+              aria-hidden="true"
+              className="absolute left-1/2 h-0.5 w-10 -translate-x-1/2 -translate-y-1/2 bg-primary shadow"
+              style={{ top: `${previewPercentage}%` }}
+            />
+            {timelineFocused && previewLabel ? (
+  <span
+    aria-hidden="true"
+    className="pointer-events-none absolute right-full mr-2 -translate-y-1/2 whitespace-nowrap rounded border bg-background px-2 py-1 text-xs text-foreground shadow"
+    style={{ top: `${previewPercentage}%` }}
+  >
+    {previewLabel}
+  </span>
+            ) : null}
           </div>
-        )
-      })}
+        </aside>
+      ) : null}
     </div>
   )
 }

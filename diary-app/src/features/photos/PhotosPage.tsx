@@ -18,12 +18,14 @@ import { trashPhotos } from '@/api/photos'
 import { cn } from '@/lib/utils'
 
 export function PhotosPage() {
-  const { items: gallery, total: galleryTotal, loading: galleryLoading, loadingMore, error: galleryErr, reload: loadGallery } = useGallery()
+  const { items: gallery, loading: galleryLoading, loadingMore, error: galleryErr, reload: loadGallery } = useGallery()
   const [showOnlyWithLocation, setShowOnlyWithLocation] = useState(false);
 
 
   const [viewerIndex, setViewerIndex] = useState<number | null>(null)
   const [bulkOpen, setBulkOpen] = useState(false)
+  const [sharePreparing, setSharePreparing] = useState(false)
+  const [shareStatus, setShareStatus] = useState<string | null>(null)
 
   const { selectionMode, selectedPaths, toggleSelected, clearSelected, selectAllFiltered } = useBulkSelection()
 
@@ -58,6 +60,11 @@ export function PhotosPage() {
       return true
     })
   }, [gallery, peopleFilter, tagFilter, tagState, showOnlyWithLocation]) // Dependency hinzugefügt
+
+  const selectedItems = useMemo(() => {
+    const itemsByPath = new Map(filtered.map((it) => [it.path, it] as const))
+    return Array.from(selectedPaths).map((path) => itemsByPath.get(path)).filter(Boolean) as GalleryItem[]
+  }, [filtered, selectedPaths])
 
   return (
     <div className="space-y-4">
@@ -169,59 +176,52 @@ export function PhotosPage() {
         <>
           <SelectionBar
             count={selectedPaths.size}
+            shareBusy={sharePreparing}
+            shareStatus={shareStatus}
             onSelectAll={() => selectAllFiltered(filtered)}
             onClear={clearSelected}
             onShare={async () => {
-              const paths = Array.from(selectedPaths)
-              if (paths.length === 0) return
-
-              const nameFromPath = (p: string) => p.split('/').pop() || 'photo'
-
-              const MAX_DIRECT = 20
-              const itemsByPath = new Map(filtered.map((it) => [it.path, it] as const))
-              const selectedItems = paths.map((p) => itemsByPath.get(p)).filter(Boolean) as GalleryItem[]
-
-              async function fetchFile(it: GalleryItem) {
-                const res = await fetch(it.url)
-                if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
-                const blob = await res.blob()
-                return new File([blob], nameFromPath(it.path), { type: blob.type || 'image/jpeg' })
-              }
-
+              if (selectedItems.length === 0) return
               const nav: any = navigator
-
-              if (selectedItems.length <= MAX_DIRECT && nav?.share) {
-                try {
-                  const files: File[] = []
-                  for (const it of selectedItems) files.push(await fetchFile(it))
-                  await nav.share({ files, title: `Fotos (${files.length})` })
-                  return
-                } catch {
-                  // fall through to zip
-                }
+              if (!window.isSecureContext || !nav?.share) {
+                setShareStatus('Dieser Browser unterstützt kein direktes Dateiteilen. Öffne Diary in Chrome/Edge oder auf dem Smartphone über HTTPS; dort zeigt das System verfügbare Apps wie E-Mail, WhatsApp oder Telegram an.')
+                return
               }
 
+              setSharePreparing(true)
+              setShareStatus('Dateien werden vorbereitet…')
               try {
-                const { zipSync } = await import('fflate')
-                const entries: Record<string, Uint8Array> = {}
-                for (const it of selectedItems) {
-                  const res = await fetch(it.url)
-                  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
-                  const buf = new Uint8Array(await res.arrayBuffer())
-                  entries[nameFromPath(it.path)] = buf
+                const files: File[] = []
+                if (selectedItems.length <= 20) {
+                  for (const it of selectedItems) {
+                    const res = await fetch(it.url)
+                    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+                    const blob = await res.blob()
+                    const name = it.path.split('/').pop() || 'photo'
+                    files.push(new File([blob], name, { type: blob.type || 'image/jpeg' }))
+                  }
+                } else {
+                  const { zipSync } = await import('fflate')
+                  const entries: Record<string, Uint8Array> = {}
+                  for (const it of selectedItems) {
+                    const res = await fetch(it.url)
+                    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+                    entries[it.path.split('/').pop() || 'photo'] = new Uint8Array(await res.arrayBuffer())
+                  }
+                  const zipped = zipSync(entries, { level: 0 })
+                  const date = new Date().toISOString().slice(0, 10)
+                  files.push(new File([zipped.slice().buffer], `fotos_${date}.zip`, { type: 'application/zip' }))
                 }
-                const zipped = zipSync(entries, { level: 0 })
-                const blob = new Blob([zipped.slice().buffer], { type: 'application/zip' })
-                const objUrl = URL.createObjectURL(blob)
-                const a = document.createElement('a')
-                a.href = objUrl
-                a.download = `fotos_${new Date().toISOString().slice(0, 10)}.zip`
-                document.body.appendChild(a)
-                a.click()
-                a.remove()
-                window.setTimeout(() => URL.revokeObjectURL(objUrl), 1000)
+                if (nav.canShare && !nav.canShare({ files })) {
+                  setShareStatus('Dieser Browser kann diese Datei(en) nicht direkt teilen.')
+                  return
+                }
+                await nav.share({ files, title: `Fotos (${files.length})` })
+                setShareStatus(null)
               } catch (e: any) {
-                alert(e?.message ?? String(e))
+                setShareStatus(e?.name === 'AbortError' ? 'Teilen abgebrochen.' : e?.message ?? 'Teilen fehlgeschlagen.')
+              } finally {
+                setSharePreparing(false)
               }
             }}
             onTrash={async () => {

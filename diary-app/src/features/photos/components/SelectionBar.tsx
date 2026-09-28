@@ -16,6 +16,8 @@ export function SelectionBar({
   onSelectAll,
   onClear,
   onShare,
+  shareBusy = false,
+  shareStatus = null,
   onTrash,
   onOpenTags,
   onDone
@@ -24,6 +26,8 @@ export function SelectionBar({
   onSelectAll: () => void
   onClear: () => void
   onShare: () => Promise<void> | void
+  shareBusy?: boolean
+  shareStatus?: string | null
   onTrash: () => Promise<void> | void
   onOpenTags: () => void
   onDone: () => void
@@ -31,7 +35,9 @@ export function SelectionBar({
   const [trashOpen, setTrashOpen] = useState(false)
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-3 backdrop-blur">
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-2">
+      <div className="mx-auto max-w-5xl">
+      {shareStatus ? <div role="status" className="pb-2 text-xs text-muted-foreground">{shareStatus}</div> : null}
+      <div className="flex items-center justify-between gap-2">
         <div className="text-sm">
           <span className="font-semibold">{count}</span> ausgewählt
         </div>
@@ -43,8 +49,8 @@ export function SelectionBar({
           <Button variant="outline" size="sm" onClick={onClear}>
             Leeren
           </Button>
-          <Button variant="outline" size="sm" onClick={onShare} disabled={count === 0}>
-            Teilen
+          <Button variant="outline" size="sm" onClick={onShare} disabled={count === 0 || shareBusy}>
+            {shareBusy ? 'Teilen…' : 'Teilen'}
           </Button>
           <Button variant="destructive" size="sm" onClick={() => setTrashOpen(true)} disabled={count === 0}>
             Löschen
@@ -56,6 +62,7 @@ export function SelectionBar({
             Fertig
           </Button>
         </div>
+      </div>
       </div>
 
       <AlertDialog open={trashOpen} onOpenChange={setTrashOpen}>
