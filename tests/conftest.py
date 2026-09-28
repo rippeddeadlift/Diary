@@ -28,6 +28,9 @@ def temp_data_dir(monkeypatch) -> Generator[Path, None, None]:
         monkeypatch.setattr("server.photos_repo.SHA256_INDEX_PATH", tmp_path / "photos" / "_sha256_index.json")
         monkeypatch.setattr("server.photos_repo.GALLERY_ORDER_PATH", tmp_path / "photos" / "_gallery_order.json")
         monkeypatch.setattr("server.photos_repo.GALLERY_PATHS_PATH", tmp_path / "photos" / "_gallery_paths.json")
+        monkeypatch.setattr("server.photos_repo._gallery_disk_synced", False)
+        monkeypatch.setattr("server.photos_repo._ranked_rels", None)
+        monkeypatch.setattr("server.photos_repo._ranked_index", None)
 
         # Patch server.main module-level paths (computed at import time)
         monkeypatch.setattr("server.main.DATA_DIR", tmp_path)
