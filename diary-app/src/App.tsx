@@ -1,13 +1,17 @@
 import { useState } from 'react'
 import { HomePage } from '@/features/home-page'
-import { FEATURES, FEATURE_ITEMS, type Page } from '@/features/registry'
+import { FEATURES, FEATURE_ITEMS, SETTINGS_PAGE, type Page } from '@/features/registry'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Toaster } from 'sonner'
 import { Layout } from './components/layout'
 
 export default function App() {
   const [page, setPage] = useState<Page>('home')
-  const ActiveFeature = page === 'home' ? null : FEATURES[page].component
+  const ActiveFeature = page === 'home'
+    ? null
+    : page === 'settings'
+      ? SETTINGS_PAGE.component
+      : FEATURES[page].component
 
   return (
     <ErrorBoundary>

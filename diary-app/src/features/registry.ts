@@ -9,11 +9,11 @@ export const FEATURES = {
   trips: { label: 'Touren', component: TripsPage },
   fitness: { label: 'Fitness', component: FitnessPage },
   movies: { label: 'Filme', component: MoviesPage },
-  settings: { label: 'Einstellungen', component: SettingsPage },
 } as const
 
 export type FeatureId = keyof typeof FEATURES
-export type Page = 'home' | FeatureId
+export type Page = 'home' | FeatureId | 'settings'
+export const SETTINGS_PAGE = { label: 'Einstellungen', component: SettingsPage }
 
 export const FEATURE_ITEMS = (Object.keys(FEATURES) as FeatureId[]).map((id) => ({
   id,

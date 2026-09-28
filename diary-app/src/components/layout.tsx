@@ -1,5 +1,7 @@
 import { ThemeToggle } from './ThemeToggle'
 import type { ReactNode } from 'react'
+import { Settings } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { FEATURE_ITEMS, type Page } from '@/features/registry'
 
 interface LayoutProps {
@@ -46,8 +48,19 @@ export function Layout({ children, page, setPage }: LayoutProps) {
             </nav>
           </div>
 
-          {/* Rechts: Theme Toggle */}
-          <ThemeToggle />
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant={page === 'settings' ? 'destructive' : 'ghost'}
+              size="icon"
+              aria-label="Einstellungen"
+              title="Einstellungen"
+              onClick={() => setPage('settings')}
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+            <ThemeToggle />
+          </div>
 
         </div>
       </header>
