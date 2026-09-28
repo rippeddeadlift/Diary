@@ -1,69 +1,42 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
+import { Moon, Sun } from 'lucide-react'
 
-type Theme = 'light' | 'dark' | 'system'
+type Theme = 'light' | 'dark'
 const STORAGE_KEY = 'diary.theme'
 
 function applyTheme(theme: Theme) {
   const root = document.documentElement
-
-  const systemDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches
-  const shouldDark = theme === 'dark' || (theme === 'system' && systemDark)
-
-  root.classList.toggle('dark', shouldDark)
+  root.classList.toggle('dark', theme === 'dark')
 }
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>('system')
+  const [theme, setTheme] = useState<Theme>('dark')
 
-  // initial load
+  // Initial Load: Storage oder System-Preference prüfen
   useEffect(() => {
-    const saved = (localStorage.getItem(STORAGE_KEY) as Theme | null) ?? 'system'
-    setTheme(saved)
-    applyTheme(saved)
+    const saved = localStorage.getItem(STORAGE_KEY) as Theme | null
+    if (saved) {
+      setTheme(saved)
+      applyTheme(saved)
+    } else {
+      const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+      const initial = systemDark ? 'dark' : 'light'
+      setTheme(initial)
+      applyTheme(initial)
+    }
   }, [])
 
-  // update on change
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, theme)
-    applyTheme(theme)
-
-    // if system theme changes while we're in system mode
-    const mq = window.matchMedia?.('(prefers-color-scheme: dark)')
-    if (!mq) return
-
-    const onChange = () => {
-      if (theme === 'system') applyTheme('system')
-    }
-
-    mq.addEventListener?.('change', onChange)
-    return () => mq.removeEventListener?.('change', onChange)
-  }, [theme])
-
-  const label = useMemo(() => {
-    if (theme === 'light') return 'Hell'
-    if (theme === 'dark') return 'Dunkel'
-    return 'System'
-  }, [theme])
+  const toggleTheme = () => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark'
+    setTheme(nextTheme)
+    localStorage.setItem(STORAGE_KEY, nextTheme)
+    applyTheme(nextTheme)
+  }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm">
-          Theme: {label}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setTheme('light')}>Hell</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme('dark')}>Dunkel</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme('system')}>System</DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Button variant="ghost" size="icon" onClick={toggleTheme} title="Theme wechseln">
+      {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+    </Button>
   )
 }
