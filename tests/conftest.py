@@ -46,6 +46,8 @@ def temp_data_dir(monkeypatch) -> Generator[Path, None, None]:
         monkeypatch.setattr("server.main.TRIPS_MEDIA_TRASH_DIR", tmp_path / "trips" / "_trash")
         monkeypatch.setattr("server.main.TRIPS_INDEX", tmp_path / "trips" / "index.json")
         monkeypatch.setattr("server.main.TRIPS_TRASH_DIR", tmp_path / "trips" / "_trash")
+        monkeypatch.setattr("server.main.MOVIES_CONFIG_PATH", tmp_path / "movies" / "library.json")
+        monkeypatch.setattr("server.main.MOVIE_THUMBS_DIR", tmp_path / "movies" / "_thumbs")
         
         yield tmp_path
 

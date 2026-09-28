@@ -2,10 +2,13 @@
 from __future__ import annotations
 
 import json
+from io import BytesIO
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
+from PIL import Image, ImageStat
 
 from server.main import app
 
@@ -13,7 +16,7 @@ from server.main import app
 @pytest.fixture
 def client(temp_data_dir) -> TestClient:
     """Create a test client."""
-    return TestClient(app)
+    return TestClient(app, client=("127.0.0.1", 50000))
 
 
 class TestHealthEndpoint:
@@ -128,6 +131,56 @@ class TestPhotosEndpoints:
         assert item["kind"] == "video"
         assert item["url"] == f"/media/{item['path']}"
         assert (temp_data_dir / item["path"]).read_bytes() == payload
+
+
+class TestMoviesEndpoints:
+    def test_movie_folder_lists_posters_and_range_playback(self, client, temp_data_dir, monkeypatch):
+        movie_root = temp_data_dir / "movie-library"
+        nested = movie_root / "Sci-Fi"
+        nested.mkdir(parents=True)
+        payload = b"0123456789"
+        (nested / "Arrival.mp4").write_bytes(payload)
+
+        sample_times = []
+
+        def create_poster(args, **kwargs):
+            if args[0] == "ffprobe":
+                return SimpleNamespace(stdout="100\n")
+            sample_times.append(args[args.index("-ss") + 1])
+            color = "black" if len(sample_times) == 1 else "white"
+            Image.new("RGB", (16, 16), color=color).save(args[-1], format="JPEG")
+            return SimpleNamespace(returncode=0)
+
+        monkeypatch.setattr("server.main.subprocess.run", create_poster)
+        selected = client.post("/api/movies/folder", json={"path": str(movie_root)})
+        assert selected.status_code == 200, selected.text
+        data = selected.json()
+        assert data["folder"] == str(movie_root)
+        assert data["count"] == 1
+        item = data["items"][0]
+        assert item["title"] == "Arrival"
+        assert item["path"] == "Sci-Fi/Arrival.mp4"
+
+        opened_paths = []
+        monkeypatch.setattr("server.main.sys.platform", "win32")
+        monkeypatch.setattr("server.main.os.startfile", opened_paths.append, raising=False)
+        opened = client.post("/api/movies/open", json={"path": item["path"]})
+        assert opened.status_code == 200, opened.text
+        assert opened_paths == [str(nested / "Arrival.mp4")]
+
+        poster = client.get(item["posterUrl"])
+        assert poster.status_code == 200
+        assert sample_times == ["10.000", "25.000"]
+        with Image.open(BytesIO(poster.content)) as poster_image:
+            assert ImageStat.Stat(poster_image.convert("L")).mean[0] >= 12
+
+        stream = client.get(item["url"], headers={"Range": "bytes=2-5"})
+        assert stream.status_code == 206
+        assert stream.content == b"2345"
+        assert stream.headers["content-range"] == "bytes 2-5/10"
+
+        traversal = client.get("/api/movies/stream/%2E%2E%2Foutside.mp4")
+        assert traversal.status_code == 404
 
     def test_upload_separates_media_from_app_data(self, client, temp_data_dir, tmp_path, monkeypatch, sample_image):
         media_dir = tmp_path / "archive"

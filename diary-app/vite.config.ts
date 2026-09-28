@@ -27,6 +27,11 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         runtimeCaching: [
           {
+            // Movie streams use byte ranges and should never be cached as API responses.
+            urlPattern: /^\/api\/movies\/stream\/.*/i,
+            handler: 'NetworkOnly'
+          },
+          {
             // Cache thumbnails and media served by the local backend.
             urlPattern: /^\/(files|media)\/.*/i,
             handler: 'StaleWhileRevalidate',

@@ -1,21 +1,25 @@
 from __future__ import annotations
 
 import json
+import mimetypes
+import ipaddress
+import os
 from datetime import datetime
 import re
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any, List
+from urllib.parse import quote
 import zipfile
 import tempfile
 import shutil
 
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageStat
 import pillow_heif
 
-from fastapi import FastAPI, File, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .config import DATA_DIR, MEDIA_DIR, MEDIA_EXTS, PHOTOS_INBOX_DIR, ROOT, VIDEO_EXTS
@@ -29,6 +33,9 @@ TRIPS_INDEX = TRIPS_DIR / "index.json"
 TRIPS_TRASH_DIR = TRIPS_DIR / "_trash"
 TRIPS_MEDIA_DIR = MEDIA_DIR / "trips"
 TRIPS_MEDIA_TRASH_DIR = TRIPS_MEDIA_DIR / "_trash"
+MOVIES_CONFIG_PATH = DATA_DIR / "movies" / "library.json"
+MOVIE_THUMBS_DIR = DATA_DIR / "movies" / "_thumbs"
+MOVIE_EXTS = VIDEO_EXTS | {".avi", ".mkv", ".mpeg", ".mpg", ".wmv"}
 
 
 def thumb_path_for(rel_under_data: str) -> Path:
@@ -39,32 +46,56 @@ def thumb_path_for(rel_under_data: str) -> Path:
 def ensure_video_poster(video_abs: Path, rel_under_data: str) -> None:
     """Grab one JPEG frame for the gallery tile. Needs ffmpeg on PATH."""
     dst = thumb_path_for(rel_under_data).with_suffix(".jpg")
+    _generate_video_poster(video_abs, dst)
+
+
+def _generate_video_poster(video_abs: Path, dst: Path) -> None:
     if dst.exists():
         return
     dst.parent.mkdir(parents=True, exist_ok=True)
     try:
-        subprocess.run(
+        probe = subprocess.run(
             [
-                "ffmpeg",
-                "-y",
-                "-ss",
-                "0.5",
-                "-i",
-                str(video_abs),
-                "-frames:v",
-                "1",
-                "-vf",
-                "scale=512:512:force_original_aspect_ratio=increase,crop=512:512",
-                str(dst),
+                "ffprobe", "-v", "error", "-show_entries", "format=duration",
+                "-of", "default=noprint_wrappers=1:nokey=1", str(video_abs),
             ],
             capture_output=True,
-            timeout=30,
+            text=True,
+            timeout=15,
             check=False,
         )
-    except (OSError, subprocess.TimeoutExpired):
-        return
-    if dst.exists() and dst.stat().st_size == 0:
-        dst.unlink(missing_ok=True)
+        duration = float(probe.stdout.strip())
+        sample_times = [duration * fraction for fraction in (0.1, 0.25, 0.5)]
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        sample_times = [10.0, 30.0, 60.0]
+
+    candidate = dst.with_name(f"{dst.stem}.candidate.jpg")
+    best_brightness = -1.0
+    try:
+        for sample_time in sample_times:
+            try:
+                subprocess.run(
+                    [
+                        "ffmpeg", "-y", "-ss", f"{sample_time:.3f}", "-i", str(video_abs),
+                        "-frames:v", "1", "-vf",
+                        "scale=512:512:force_original_aspect_ratio=increase,crop=512:512",
+                        str(candidate),
+                    ],
+                    capture_output=True,
+                    timeout=30,
+                    check=False,
+                )
+                with Image.open(candidate) as image:
+                    brightness = ImageStat.Stat(image.convert("L")).mean[0]
+                if brightness > best_brightness:
+                    shutil.copyfile(candidate, dst)
+                    best_brightness = brightness
+                if brightness >= 12:
+                    break
+            except (OSError, subprocess.TimeoutExpired):
+                continue
+    finally:
+        candidate.unlink(missing_ok=True)
 
 
 def ensure_thumb(img_abs: Path, rel_under_data: str, *, max_size: int = 512) -> None:
@@ -162,6 +193,148 @@ app.mount("/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
 @app.get("/api/health")
 def health():
     return {"ok": True, "time": datetime.now().astimezone().isoformat(timespec="seconds")}
+
+
+def _movie_folder() -> Path | None:
+    try:
+        value = json.loads(MOVIES_CONFIG_PATH.read_text(encoding="utf-8")).get("folder")
+        folder = Path(value).expanduser().resolve() if isinstance(value, str) else None
+        return folder if folder is not None and folder.is_dir() else None
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        return None
+
+
+def _check_local_request(request: Request) -> None:
+    host = request.client.host if request.client else ""
+    try:
+        is_local = ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        is_local = False
+    if not is_local:
+        raise HTTPException(status_code=403, detail="Movie library settings are local-only")
+
+
+def _save_movie_folder(folder: str) -> Path:
+    path = Path(folder).expanduser().resolve()
+    if not path.is_dir():
+        raise HTTPException(status_code=400, detail="Folder does not exist")
+    MOVIES_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    MOVIES_CONFIG_PATH.write_text(json.dumps({"folder": str(path)}, indent=2), encoding="utf-8")
+    return path
+
+
+def _resolve_movie(movie_path: str) -> tuple[Path, Path]:
+    root = _movie_folder()
+    if root is None:
+        raise HTTPException(status_code=404, detail="Choose a movie folder first")
+    candidate = (root / movie_path).resolve()
+    try:
+        candidate.relative_to(root)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Movie not found") from None
+    if not candidate.is_file() or candidate.suffix.lower() not in MOVIE_EXTS:
+        raise HTTPException(status_code=404, detail="Movie not found")
+    return root, candidate
+
+
+@app.get("/api/movies")
+def list_movies():
+    root = _movie_folder()
+    if root is None:
+        return {"folder": None, "count": 0, "items": []}
+
+    items = []
+    for movie in root.rglob("*"):
+        if not movie.is_file() or movie.suffix.lower() not in MOVIE_EXTS:
+            continue
+        try:
+            movie.resolve().relative_to(root)
+        except ValueError:
+            continue
+        rel = movie.relative_to(root).as_posix()
+        encoded = quote(rel, safe="/")
+        items.append({
+            "path": rel,
+            "title": movie.stem,
+            "url": f"/api/movies/stream/{encoded}",
+            "posterUrl": f"/api/movies/poster/{encoded}",
+        })
+    items.sort(key=lambda item: item["title"].casefold())
+    return {"folder": str(root), "count": len(items), "items": items}
+
+
+@app.post("/api/movies/folder")
+def set_movie_folder(payload: dict[str, str], request: Request):
+    _check_local_request(request)
+    folder = payload.get("path", "").strip()
+    if not folder:
+        raise HTTPException(status_code=400, detail="Folder path is required")
+    _save_movie_folder(folder)
+    return list_movies()
+
+
+@app.post("/api/movies/pick-folder")
+def pick_movie_folder(request: Request):
+    _check_local_request(request)
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+    except ImportError:
+        raise HTTPException(status_code=501, detail="Native folder selection is unavailable; enter a path instead") from None
+
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+    try:
+        current = _movie_folder()
+        selected = filedialog.askdirectory(
+            title="Choose your movie folder",
+            initialdir=str(current) if current else None,
+        )
+    finally:
+        root.destroy()
+    if not selected:
+        return {"cancelled": True, **list_movies()}
+    _save_movie_folder(selected)
+    return list_movies()
+
+
+@app.get("/api/movies/poster/{movie_path:path}")
+def movie_poster(movie_path: str):
+    root, movie = _resolve_movie(movie_path)
+    rel = movie.relative_to(root)
+    poster = (MOVIE_THUMBS_DIR / f"{rel.as_posix()}.jpg").resolve()
+    try:
+        poster.relative_to(MOVIE_THUMBS_DIR.resolve())
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Poster not found") from None
+    _generate_video_poster(movie, poster)
+    if not poster.is_file():
+        raise HTTPException(status_code=404, detail="Could not create movie poster; install ffmpeg")
+    return FileResponse(poster, media_type="image/jpeg")
+
+
+@app.get("/api/movies/stream/{movie_path:path}")
+def stream_movie(movie_path: str):
+    _, movie = _resolve_movie(movie_path)
+    media_type = mimetypes.guess_type(movie.name)[0] or "application/octet-stream"
+    return FileResponse(movie, media_type=media_type, filename=movie.name)
+
+
+@app.post("/api/movies/open")
+def open_movie(payload: dict[str, str], request: Request):
+    _check_local_request(request)
+    _, movie = _resolve_movie(payload.get("path", ""))
+    try:
+        if sys.platform == "win32":
+            os.startfile(str(movie))
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", str(movie)])
+        else:
+            subprocess.Popen(["xdg-open", str(movie)])
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail=f"Could not open movie player: {exc}") from exc
+    return {"ok": True}
 
 
 def _gallery_item_for(img: Path) -> GalleryItem | None:
