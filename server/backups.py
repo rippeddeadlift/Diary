@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import os
+import json
 import shutil
 import stat
 import tempfile
+from datetime import datetime
 import zipfile
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import BinaryIO, Callable
 
 MAX_BACKUP_ENTRIES = 100_000
 MAX_BACKUP_UNPACKED_BYTES = 10 * 1024 * 1024 * 1024
+BACKUP_MANIFEST_NAME = "__diary_backup__.json"
 PRECOMPRESSED_EXTENSIONS = {
     ".7z", ".avif", ".avi", ".flac", ".gif", ".heic", ".jpeg", ".jpg",
     ".m4a", ".m4v", ".mkv", ".mov", ".mp3", ".mp4", ".pdf", ".png",
@@ -24,6 +27,7 @@ def create_backup_archive(
     descriptor, archive_name = tempfile.mkstemp(prefix="diary-data-", suffix=".zip")
     os.close(descriptor)
     archive_path = Path(archive_name)
+    created_at = datetime.now().astimezone().isoformat(timespec="seconds")
     try:
         entries = sorted(data_dir.rglob("*"))
         for source in entries:
@@ -46,6 +50,15 @@ def create_backup_archive(
                 archive.write(source, source.relative_to(data_dir).as_posix(), compress_type=compression)
                 if on_progress:
                     on_progress(index, len(files))
+            archive.writestr(
+                BACKUP_MANIFEST_NAME,
+                json.dumps({
+                    "format": "diary-data-backup",
+                    "version": 1,
+                    "createdAt": created_at,
+                    "files": len(files),
+                }),
+            )
         return archive_path
     except Exception:
         archive_path.unlink(missing_ok=True)
@@ -88,6 +101,8 @@ def restore_backup_archive(data_dir: Path, source: BinaryIO) -> tuple[int, int]:
                 if normalized_name in seen:
                     raise ValueError("The backup contains duplicate paths")
                 seen.add(normalized_name)
+                if normalized_name == BACKUP_MANIFEST_NAME:
+                    continue
 
                 mode = (entry.external_attr >> 16) & 0xFFFF
                 file_type = stat.S_IFMT(mode)
@@ -126,3 +141,34 @@ def restore_backup_archive(data_dir: Path, source: BinaryIO) -> tuple[int, int]:
             shutil.rmtree(previous_data, ignore_errors=True)
 
     return file_count, unpacked_bytes
+
+
+def latest_valid_backup(media_dir: Path) -> dict[str, str | bool | None]:
+    candidates = sorted(
+        media_dir.glob("diary-backup-*.zip"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    ) if media_dir.is_dir() else []
+
+    for candidate in candidates:
+        try:
+            with zipfile.ZipFile(candidate) as archive:
+                entries = archive.infolist()
+                if not entries:
+                    continue
+                manifest_entry = next((entry for entry in entries if entry.filename == BACKUP_MANIFEST_NAME), None)
+                if manifest_entry is not None:
+                    manifest = json.loads(archive.read(manifest_entry))
+                    if manifest.get("format") != "diary-data-backup" or manifest.get("version") != 1:
+                        continue
+                    created_at = manifest.get("createdAt")
+                    if not isinstance(created_at, str):
+                        continue
+                    datetime.fromisoformat(created_at)
+                else:
+                    created_at = datetime.fromtimestamp(candidate.stat().st_mtime).astimezone().isoformat(timespec="seconds")
+            return {"valid": True, "createdAt": created_at, "filename": candidate.name}
+        except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError, zipfile.BadZipFile):
+            continue
+
+    return {"valid": False, "createdAt": None, "filename": None}

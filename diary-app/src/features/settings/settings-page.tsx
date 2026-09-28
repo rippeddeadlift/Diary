@@ -1,7 +1,14 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Archive, Check, HardDrive, LoaderCircle, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { getBackupExportStatus, importBackup, saveBackupToMedia, startBackupExport } from '@/api/backup'
+import {
+  getBackupExportStatus,
+  getLatestBackup,
+  importBackup,
+  saveBackupToMedia,
+  startBackupExport,
+  type LatestBackup,
+} from '@/api/backup'
 
 export function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -11,9 +18,25 @@ export function SettingsPage() {
   const [exportProgress, setExportProgress] = useState({ filesDone: 0, totalFiles: 0 })
   const [exportError, setExportError] = useState<string | null>(null)
   const [exportResult, setExportResult] = useState<string | null>(null)
+  const [latestBackup, setLatestBackup] = useState<LatestBackup | null>(null)
+  const [backupStatusError, setBackupStatusError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<string | null>(null)
+
+  async function refreshLatestBackup() {
+    try {
+      setLatestBackup(await getLatestBackup())
+      setBackupStatusError(null)
+    } catch (reason) {
+      setLatestBackup(null)
+      setBackupStatusError(reason instanceof Error ? reason.message : 'Der Backup-Status konnte nicht geladen werden.')
+    }
+  }
+
+  useEffect(() => {
+    void refreshLatestBackup()
+  }, [])
 
   async function createBackup() {
     setExporting(true)
@@ -30,7 +53,8 @@ export function SettingsPage() {
         await new Promise((resolve) => window.setTimeout(resolve, 500))
       }
       const saved = await saveBackupToMedia(jobId)
-      setExportResult(`Backup gespeichert: ${saved.path}`)
+      setExportResult(saved.path)
+      await refreshLatestBackup()
     } catch (reason) {
       setExportError(reason instanceof Error ? reason.message : 'Das Backup konnte nicht erstellt werden.')
     } finally {
@@ -73,6 +97,16 @@ export function SettingsPage() {
           </div>
         </div>
 
+        {latestBackup?.valid && latestBackup.createdAt ? (
+          <p role="status" className="flex items-center gap-2 text-sm font-medium text-green-700">
+            <Check className="h-4 w-4" /> Backup gemacht am {formatBackupDate(latestBackup.createdAt)}
+          </p>
+        ) : backupStatusError ? (
+          <p role="alert" className="text-sm text-destructive">{backupStatusError}</p>
+        ) : (
+          <p className="text-sm text-muted-foreground">Kein gültiges Backup gefunden.</p>
+        )}
+
         <Button type="button" onClick={() => void createBackup()} disabled={busy || exporting}>
           {exporting ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <HardDrive className="mr-2 h-4 w-4" />}
           {exporting ? 'ZIP wird erstellt…' : 'Backup im Medienordner speichern'}
@@ -93,7 +127,7 @@ export function SettingsPage() {
           </div>
         ) : null}
         {exportError ? <p role="alert" className="text-sm text-destructive">{exportError}</p> : null}
-        {exportResult ? <p role="status" className="flex items-start gap-2 text-sm text-green-700"><Check className="mt-0.5 h-4 w-4 shrink-0" />{exportResult}</p> : null}
+        {exportResult ? <p role="status" className="text-sm text-muted-foreground">Gespeichert: {exportResult}</p> : null}
       </section>
 
       <section className="space-y-5" aria-labelledby="restore-heading">
@@ -150,4 +184,12 @@ export function SettingsPage() {
 function formatBytes(bytes: number): string {
   if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MB`
   return `${(bytes / 1024 ** 3).toFixed(2)} GB`
+}
+
+function formatBackupDate(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'unbekannt'
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  return `${day}.${month}.${date.getFullYear()}`
 }

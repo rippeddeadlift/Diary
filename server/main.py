@@ -27,7 +27,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import photos_repo
-from .backups import create_backup_archive, restore_backup_archive
+from .backups import create_backup_archive, latest_valid_backup, restore_backup_archive
 from .config import DATA_DIR, MEDIA_DIR, MEDIA_EXTS, PHOTOS_INBOX_DIR, ROOT, VIDEO_EXTS
 
 TRASH_DIR = MEDIA_DIR / "photos" / "_trash"
@@ -201,6 +201,12 @@ app.mount("/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
 @app.get("/api/health")
 def health():
     return {"ok": True, "time": datetime.now().astimezone().isoformat(timespec="seconds")}
+
+
+@app.get("/api/backup/status")
+def backup_status(request: Request):
+    _check_local_request(request)
+    return latest_valid_backup(MEDIA_DIR)
 
 
 def _run_backup_export(job_id: str) -> None:

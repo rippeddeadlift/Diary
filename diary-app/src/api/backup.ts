@@ -12,6 +12,21 @@ export type BackupExportStatus = {
   error: string | null
 }
 
+export type LatestBackup = {
+  valid: boolean
+  createdAt: string | null
+  filename: string | null
+}
+
+export async function getLatestBackup(): Promise<LatestBackup> {
+  const response = await fetch('/api/backup/status')
+  const payload = await response.json()
+  if (!response.ok) {
+    throw new Error(payload.detail ?? 'Der Backup-Status konnte nicht geladen werden.')
+  }
+  return payload as LatestBackup
+}
+
 export async function startBackupExport(): Promise<{ jobId: string }> {
   const response = await fetch('/api/backup/export', { method: 'POST' })
   const payload = await response.json()

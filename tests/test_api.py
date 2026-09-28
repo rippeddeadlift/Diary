@@ -34,6 +34,10 @@ class TestHealthEndpoint:
 
 class TestBackupEndpoints:
     def test_export_and_restore_data_zip(self, client, temp_data_dir, tmp_path, monkeypatch):
+        empty_status = client.get("/api/backup/status")
+        assert empty_status.status_code == 200
+        assert empty_status.json()["valid"] is False
+
         (temp_data_dir / "settings.json").write_text('{"private": true}', encoding="utf-8")
         media_dir = tmp_path / "external-media"
         media_dir.mkdir()
@@ -57,6 +61,16 @@ class TestBackupEndpoints:
         with zipfile.ZipFile(backup_path) as archive:
             assert archive.read("settings.json") == b'{"private": true}'
             assert "original.jpg" not in archive.namelist()
+            assert json.loads(archive.read("__diary_backup__.json"))["format"] == "diary-data-backup"
+
+        latest = client.get("/api/backup/status")
+        assert latest.status_code == 200
+        assert latest.json()["valid"] is True
+        assert latest.json()["filename"] == backup_path.name
+        (media_dir / "diary-backup-99999999-999999.zip").write_bytes(b"not a ZIP")
+        latest_after_corrupt = client.get("/api/backup/status").json()
+        assert latest_after_corrupt["valid"] is True
+        assert latest_after_corrupt["filename"] == backup_path.name
 
         backup = BytesIO()
         with zipfile.ZipFile(backup, "w", zipfile.ZIP_DEFLATED) as archive:
