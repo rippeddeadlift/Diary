@@ -1,0 +1,66 @@
+import { ThemeToggle } from './ThemeToggle'
+import type { ReactNode } from 'react'
+
+type Page = 'menu' | 'photos' | 'trips' | 'fitness'
+
+interface LayoutProps {
+  children: ReactNode
+  page: Page
+  setPage: (page: Page) => void
+}
+
+const NAV_ITEMS: { id: Page; label: string }[] = [
+  { id: 'menu', label: 'Menü' },
+  { id: 'photos', label: 'Fotos' },
+  { id: 'trips', label: 'Touren' },
+  { id: 'fitness', label: 'Fitness' },
+]
+
+export function Layout({ children, page, setPage }: LayoutProps) {
+  return (
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
+      <header className="border-b bg-card w-full">
+        <div className="flex h-16 w-full items-center justify-between px-6">
+          
+          {/* Links: App-Titel + Navigationslinks */}
+          <div className="flex items-center gap-6">
+            <span 
+              onClick={() => setPage('menu')} 
+              className="text-xl font-semibold tracking-tight cursor-pointer"
+            >
+              Tagebuch
+            </span>
+
+            <nav className="flex items-center gap-1 text-sm font-medium">
+              {NAV_ITEMS.map((item) => {
+                const isActive = page === item.id
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setPage(item.id)}
+                    className={`px-3 py-1.5 rounded-md transition-colors ${
+                      isActive
+                        ? 'bg-secondary text-foreground font-semibold'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                )
+              })}
+            </nav>
+          </div>
+
+          {/* Rechts: Theme Toggle */}
+          <ThemeToggle />
+
+        </div>
+      </header>
+
+      {/* Content Bereich */}
+      <main className="mx-auto w-full max-w-7xl flex-1 px-6 py-6">
+        {children}
+      </main>
+    </div>
+  )
+}
