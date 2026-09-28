@@ -2,7 +2,14 @@
 
 Folder layout (Windows path):
 - `C:\Users\ivank\Documents\Diary\diary-app` — React app source
-- `C:\Users\ivank\Documents\Diary\trips` — your data (GPX, photos, notes)
+- `C:\Users\ivank\Documents\Diary\data` — app data: sidecars, indexes, thumbnails, trip metadata, fitness logs
+- `E:\Diary\data` — media archive: photos, videos, and GPX files
+
+The backend uses `E:\Diary\data` for media by default on Windows. Set
+`DIARY_MEDIA_DIR` before starting the backend to use another media root. The
+backend writes media-relative `.json` sidecars and indexes under the C: `data`
+folder; it does not use duplicate JSON files copied to the media archive.
+Existing media on C: is left untouched and is not removed automatically.
 
 ## Run (dev)
 

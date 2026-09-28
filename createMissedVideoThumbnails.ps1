@@ -1,12 +1,13 @@
 $root = (Get-Location).Path
-$data = Join-Path $root "data"
-$inbox = Join-Path $data "photos\inbox"
-$thumbs = Join-Path $data "photos\_thumbs"
+$appData = Join-Path $root "data"
+$mediaData = if ($env:DIARY_MEDIA_DIR) { $env:DIARY_MEDIA_DIR } else { "E:\Diary\data" }
+$inbox = Join-Path $mediaData "photos\inbox"
+$thumbs = Join-Path $appData "photos\_thumbs"
 
 Get-ChildItem $inbox -Recurse -File |
   Where-Object { $_.Extension -in ".mp4", ".mov", ".m4v", ".webm" } |
   ForEach-Object {
-    $relative = $_.FullName.Substring($data.Length + 1)
+    $relative = $_.FullName.Substring($mediaData.Length + 1)
     $output = Join-Path $thumbs ([IO.Path]::ChangeExtension($relative, ".jpg"))
 
     if (-not (Test-Path $output)) {

@@ -21,15 +21,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional, Tuple
 
 import exifread  # type: ignore
-
 ROOT = Path(__file__).resolve().parents[1]
-INBOX = ROOT / "data" / "photos" / "inbox"
+sys.path.insert(0, str(ROOT))
+from server.config import DATA_DIR, MEDIA_DIR
+
+INBOX = MEDIA_DIR / "photos" / "inbox"
 IMG_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".heic"}
 
 
@@ -132,7 +135,8 @@ def main() -> int:
 
     changed = 0
     for img in images:
-        sidecar = img.with_suffix(img.suffix + ".json")
+        rel = img.relative_to(MEDIA_DIR).as_posix()
+        sidecar = DATA_DIR / f"{rel}.json"
         data: dict[str, Any] = safe_json_load(sidecar) if sidecar.exists() else {}
 
         # ensure base keys exist
@@ -177,6 +181,7 @@ def main() -> int:
                 data["locationSource"] = "missing"
 
         if not args.dry_run:
+            sidecar.parent.mkdir(parents=True, exist_ok=True)
             sidecar.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
         changed += 1

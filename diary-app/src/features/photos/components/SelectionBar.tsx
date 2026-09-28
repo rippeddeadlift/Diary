@@ -70,7 +70,7 @@ export function SelectionBar({
           <AlertDialogHeader>
             <AlertDialogTitle>In den Papierkorb verschieben?</AlertDialogTitle>
             <AlertDialogDescription>
-              {count} Foto(s) werden nach <span className="font-mono">data/photos/_trash/…</span> verschoben und aus der Galerie entfernt.
+              {count} Foto(s) werden in den Papierkorb des Medienarchivs verschoben und aus der Galerie entfernt.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Optional
 import hashlib
 
-from .config import DATA_DIR, IMG_EXTS, MEDIA_EXTS, PHOTOS_INBOX_DIR, VIDEO_EXTS
+from .config import DATA_DIR, IMG_EXTS, MEDIA_DIR, MEDIA_EXTS, PHOTOS_INBOX_DIR, VIDEO_EXTS
 
 SHA256_INDEX_PATH = DATA_DIR / "photos" / "_sha256_index.json"
 GALLERY_ORDER_PATH = DATA_DIR / "photos" / "_gallery_order.json"
@@ -85,17 +85,25 @@ def is_media_file(p: Path) -> bool:
 
 
 def sidecar_path_for(img: Path) -> Path:
-    return img.with_suffix(img.suffix + ".json")
+    try:
+        rel = img.resolve().relative_to(MEDIA_DIR.resolve())
+    except ValueError:
+        return img.with_suffix(img.suffix + ".json")
+    return DATA_DIR / f"{rel.as_posix()}.json"
+
+
+def resolve_media_path(rel: str) -> Path:
+    """Resolve a media path relative to MEDIA_DIR and prevent traversal."""
+    rel = rel.lstrip("/\\")
+    p = (MEDIA_DIR / rel).resolve()
+    media_root = MEDIA_DIR.resolve()
+    if not p.is_relative_to(media_root):
+        raise ValueError("Path traversal")
+    return p
 
 
 def resolve_data_path(rel: str) -> Path:
-    """Resolve a path relative to DATA_DIR and prevent traversal."""
-    rel = rel.lstrip("/\\")
-    p = (DATA_DIR / rel).resolve()
-    data_root = DATA_DIR.resolve()
-    if not str(p).startswith(str(data_root)):
-        raise ValueError("Path traversal")
-    return p
+    return resolve_media_path(rel)
 
 
 def load_or_init_sidecar_for_image(img: Path) -> dict[str, Any]:
@@ -157,6 +165,7 @@ def load_sidecar(path: Path) -> dict[str, Any]:
 
 
 def save_sidecar(path: Path, data: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
@@ -247,7 +256,7 @@ def _page_from_order(limit: int, before_path: str | None) -> tuple[list[Path], b
     page: list[Path] = []
     for rel in ranked[start:]:
         try:
-            img = resolve_data_path(rel)
+            img = resolve_media_path(rel)
         except ValueError:
             continue
         if img.is_file():
@@ -270,7 +279,7 @@ def newest_inbox_images(limit: int, before_path: str | None = None) -> tuple[lis
     cursor_created = ""
     if before_path:
         try:
-            cursor_created = _sidecar_created_at(resolve_data_path(before_path)) or ""
+            cursor_created = _sidecar_created_at(resolve_media_path(before_path)) or ""
         except ValueError:
             cursor_created = ""
     cursor_day = cursor_created[:10]
@@ -293,7 +302,7 @@ def newest_inbox_images(limit: int, before_path: str | None = None) -> tuple[lis
             if not img.is_file() or not is_media_file(img) or "thumbs" in img.parts:
                 continue
             created = _sidecar_created_at(img)
-            rel = img.relative_to(DATA_DIR).as_posix()
+            rel = img.relative_to(MEDIA_DIR).as_posix()
             if cursor_key is not None and order_sort_key(rel, created) <= cursor_key:
                 continue
             found.append((created or "", img))
@@ -448,7 +457,7 @@ def sync_missing_gallery_items() -> int:
                 continue
             if is_live_photo_video_file(img):
                 continue
-            rel = img.relative_to(DATA_DIR).as_posix()
+            rel = img.relative_to(MEDIA_DIR).as_posix()
             if rel in known:
                 continue
             missing.append((rel, _sidecar_created_at(img)))
@@ -458,7 +467,7 @@ def sync_missing_gallery_items() -> int:
             continue
         if is_live_photo_video_file(img):
             continue
-        rel = img.relative_to(DATA_DIR).as_posix()
+        rel = img.relative_to(MEDIA_DIR).as_posix()
         if rel in known:
             continue
         missing.append((rel, _sidecar_created_at(img)))

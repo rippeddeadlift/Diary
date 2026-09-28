@@ -9,8 +9,11 @@ import re
 import sys
 from pathlib import Path
 from datetime import datetime
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from server.config import DATA_DIR, MEDIA_DIR
 
-DATA_INBOX = Path('data/photos/inbox').resolve()
+DATA_INBOX = MEDIA_DIR / "photos" / "inbox"
 
 def unix_sec_to_iso(ts_sec: str) -> str:
     dt = datetime.utcfromtimestamp(int(ts_sec))
@@ -65,7 +68,8 @@ for json_path in takeout_root.rglob('*.json'):
         
         for cand in candidates:
             photo_path = Path(cand)
-            sidecar_path = photo_path.with_name(photo_path.name + '.json')
+            relative_path = photo_path.relative_to(MEDIA_DIR).as_posix()
+            sidecar_path = DATA_DIR / f"{relative_path}.json"
 
             if not sidecar_path.exists():
                 continue

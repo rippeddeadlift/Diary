@@ -36,7 +36,7 @@ export async function loadTripNotes(trip: Trip): Promise<string> {
 
 export async function loadTripGpx(trip: Trip): Promise<string> {
   if (!trip.meta.gpx) return ''
-  const res = await fetch(`/trips/${trip.path}/${trip.meta.gpx}`)
+  const res = await fetch(`/media/trips/${trip.path}/${trip.meta.gpx}`)
   if (!res.ok) throw new Error(`Cannot load GPX for ${trip.id}`)
   return await res.text()
 }

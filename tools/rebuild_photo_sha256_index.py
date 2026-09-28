@@ -17,13 +17,15 @@ Notes:
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 import hashlib
-
 ROOT = Path(__file__).resolve().parents[1]
-DATA_DIR = ROOT / "data"
-PHOTOS_INBOX_DIR = DATA_DIR / "photos" / "inbox"
+sys.path.insert(0, str(ROOT))
+from server.config import DATA_DIR, MEDIA_DIR
+
+PHOTOS_INBOX_DIR = MEDIA_DIR / "photos" / "inbox"
 SHA256_INDEX_PATH = DATA_DIR / "photos" / "_sha256_index.json"
 
 IMG_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".heic"}
@@ -69,7 +71,7 @@ def main() -> int:
             print(f"WARN: cannot hash {p}: {e}")
             continue
 
-        rel = p.relative_to(DATA_DIR).as_posix()
+        rel = p.relative_to(MEDIA_DIR).as_posix()
         if h in idx:
             dupes += 1
             # keep first occurrence

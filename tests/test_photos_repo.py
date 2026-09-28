@@ -98,6 +98,13 @@ class TestSidecarPath:
         img = Path("photo.png")
         assert sidecar_path_for(img) == Path("photo.png.json")
 
+    def test_media_sidecar_stays_under_app_data(self, temp_data_dir, tmp_path, monkeypatch):
+        media_dir = tmp_path / "archive"
+        image = media_dir / "photos" / "inbox" / "photo.jpg"
+        monkeypatch.setattr("server.photos_repo.MEDIA_DIR", media_dir)
+
+        assert sidecar_path_for(image) == temp_data_dir / "photos" / "inbox" / "photo.jpg.json"
+
 
 class TestResolveDataPath:
     """Tests for resolve_data_path function."""

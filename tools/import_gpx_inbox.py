@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Import GPX files into Diary data/trips.
+"""Import GPX files into the media archive and keep trip metadata in app data.
 
 Phase 1 MVP:
 - Scan a source folder (default: Windows Downloads) for *.gpx
-- Import each GPX directly into Diary/data/trips/<YYYY-MM-DD>-<slug>/
-- After successful import, move the original GPX into Diary/data/import/gpx/_done/
+- Import each GPX into the configured media archive's trips folder.
+- Keep trip metadata and index files in Diary/data/trips.
+- After successful import, move the original GPX into the archive's import/gpx/_done/
 
 Usage (PowerShell, from repo root):
   python tools/import_gpx_inbox.py
@@ -20,20 +21,25 @@ import argparse
 import json
 import re
 import shutil
+import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 import xml.etree.ElementTree as ET
 
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
 # Optional: auto-fill computed fields after import
 from tools.update_trip_meta_from_gpx import gpx_distance_km, gpx_duration_minutes, gpx_preview, gpx_max_kmh
 
-ROOT = Path(__file__).resolve().parents[1]
-DATA_DIR = ROOT / "data"
-IMPORT_DIR = DATA_DIR / "import" / "gpx"
+from server.config import DATA_DIR, MEDIA_DIR
+
+IMPORT_DIR = MEDIA_DIR / "import" / "gpx"
 DONE_DIR = IMPORT_DIR / "_done"
 TRIPS_DIR = DATA_DIR / "trips"
+TRIPS_MEDIA_DIR = MEDIA_DIR / "trips"
 INDEX_PATH = TRIPS_DIR / "index.json"
 
 
@@ -194,6 +200,7 @@ def main() -> int:
     IMPORT_DIR.mkdir(parents=True, exist_ok=True)
     DONE_DIR.mkdir(parents=True, exist_ok=True)
     TRIPS_DIR.mkdir(parents=True, exist_ok=True)
+    TRIPS_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
 
     idx = load_index()
     trips = idx.get("trips", [])
@@ -214,13 +221,15 @@ def main() -> int:
             base_id = f"{date}-{slugify(title)[:40]}"
             trip_id = ensure_unique_trip_id(base_id, idx)
             trip_path = TRIPS_DIR / trip_id
+            trip_media_path = TRIPS_MEDIA_DIR / trip_id
 
-            # Create folder
+            # Keep metadata and GPX content in their respective roots.
             if not dry:
                 trip_path.mkdir(parents=True, exist_ok=True)
+                trip_media_path.mkdir(parents=True, exist_ok=True)
 
             # Choose destination name
-            dst_gpx = trip_path / gpx.name
+            dst_gpx = trip_media_path / gpx.name
             if dst_gpx.exists():
                 dst_gpx = trip_path / f"route{gpx.suffix}"
 

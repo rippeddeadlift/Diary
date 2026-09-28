@@ -21,13 +21,15 @@ Usage (from repo root):
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 from PIL import Image, ImageOps
-
 ROOT = Path(__file__).resolve().parents[1]
-DATA_DIR = ROOT / "data"
-INBOX_DIR = DATA_DIR / "photos" / "inbox"
+sys.path.insert(0, str(ROOT))
+from server.config import DATA_DIR, MEDIA_DIR
+
+INBOX_DIR = MEDIA_DIR / "photos" / "inbox"
 THUMBS_ROOT = DATA_DIR / "photos" / "_thumbs"
 
 IMG_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".heic"}
@@ -45,7 +47,7 @@ def iter_images(root: Path):
 
 
 def thumb_path_for(img: Path) -> Path:
-    rel = img.relative_to(DATA_DIR)
+    rel = img.relative_to(MEDIA_DIR)
     return THUMBS_ROOT / rel
 
 

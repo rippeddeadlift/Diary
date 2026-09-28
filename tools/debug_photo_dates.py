@@ -4,7 +4,7 @@
 Usage (Windows PowerShell, from repo root):
   python tools/debug_photo_dates.py
   python tools/debug_photo_dates.py --limit 50
-  python tools/debug_photo_dates.py --path data/photos/inbox
+    python tools/debug_photo_dates.py --path "E:\Diary\data\photos\inbox"
 
 Dependencies:
   pip install exifread
@@ -20,9 +20,13 @@ Notes:
 from __future__ import annotations
 
 import argparse
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from server.config import PHOTOS_INBOX_DIR
 
 IMG_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".heic"}
 
@@ -130,7 +134,7 @@ def read_exif_dates_tz_gps(path: Path) -> Tuple[Optional[str], Optional[str], Op
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--path", default="data/photos/inbox", help="Folder to scan")
+    ap.add_argument("--path", default=str(PHOTOS_INBOX_DIR), help="Folder to scan")
     ap.add_argument("--limit", type=int, default=0, help="Max files to print (0 = all)")
     args = ap.parse_args()
 

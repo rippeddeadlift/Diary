@@ -18,15 +18,17 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from .config import DATA_DIR, MEDIA_EXTS, PHOTOS_INBOX_DIR, ROOT, VIDEO_EXTS
+from .config import DATA_DIR, MEDIA_DIR, MEDIA_EXTS, PHOTOS_INBOX_DIR, ROOT, VIDEO_EXTS
 
-TRASH_DIR = DATA_DIR / "photos" / "_trash"
+TRASH_DIR = MEDIA_DIR / "photos" / "_trash"
 THUMBS_DIR = DATA_DIR / "photos" / "_thumbs"
 THUMBS_TRASH_DIR = THUMBS_DIR / "_trash"
 
 TRIPS_DIR = DATA_DIR / "trips"
 TRIPS_INDEX = TRIPS_DIR / "index.json"
 TRIPS_TRASH_DIR = TRIPS_DIR / "_trash"
+TRIPS_MEDIA_DIR = MEDIA_DIR / "trips"
+TRIPS_MEDIA_TRASH_DIR = TRIPS_MEDIA_DIR / "_trash"
 
 
 def thumb_path_for(rel_under_data: str) -> Path:
@@ -124,7 +126,7 @@ from .photos_repo import (
     list_inbox_images,
     newest_inbox_images,
     load_or_init_sidecar_for_image,
-    resolve_data_path,
+    resolve_media_path,
     save_sidecar,
     sidecar_path_for,
     unique_filename,
@@ -152,7 +154,9 @@ app = FastAPI(title=APP_TITLE)
 # Read-only access to Diary/data for the gallery (served under /files).
 # Starlette StaticFiles answers Range requests, which <video> needs in order to seek.
 DATA_DIR.mkdir(parents=True, exist_ok=True)
+MEDIA_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/files", StaticFiles(directory=str(DATA_DIR)), name="files")
+app.mount("/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
 
 
 @app.get("/api/health")
@@ -161,7 +165,7 @@ def health():
 
 
 def _gallery_item_for(img: Path) -> GalleryItem | None:
-    rel = img.relative_to(DATA_DIR).as_posix()
+    rel = img.relative_to(MEDIA_DIR).as_posix()
     kind = "video" if img.suffix.lower() in VIDEO_EXTS else "image"
     thumb_rel = f"photos/_thumbs/{rel}"
     if kind == "video":
@@ -205,7 +209,7 @@ def _gallery_item_for(img: Path) -> GalleryItem | None:
     try:
         return GalleryItem(
             path=rel,
-            url=f"/files/{rel}",
+            url=f"/media/{rel}",
             kind=kind,
             hasSidecar=sc_path.exists(),
             sidecarPath=sc_path.relative_to(DATA_DIR).as_posix() if sc_path.exists() else None,
@@ -256,7 +260,7 @@ def list_inbox_all(offset: int = 0, limit: int | None = None, before: str | None
         images = list_inbox_images()
         total = len(images)
         try:
-            save_gallery_paths([p.relative_to(DATA_DIR).as_posix() for p in images])
+            save_gallery_paths([p.relative_to(MEDIA_DIR).as_posix() for p in images])
         except Exception:
             pass
 
@@ -324,7 +328,7 @@ def suggest_photos(date: str, bbox: str | None = None, limit: int = 200):
         if len(items) >= max(1, min(int(limit), 1000)):
             break
 
-        rel = img.relative_to(DATA_DIR).as_posix()
+        rel = img.relative_to(MEDIA_DIR).as_posix()
         sc_path = sidecar_path_for(img)
         sc = load_or_init_sidecar_for_image(img) if sc_path.exists() else {}
 
@@ -371,7 +375,7 @@ def suggest_photos(date: str, bbox: str | None = None, limit: int = 200):
         items.append(
             GalleryItem(
                 path=rel,
-                url=f"/files/{rel}",
+                url=f"/media/{rel}",
                 hasSidecar=sc_path.exists(),
                 sidecarPath=sc_path.relative_to(DATA_DIR).as_posix() if sc_path.exists() else None,
                 thumbUrl=f"/files/{thumb_rel}" if thumb_exists else None,
@@ -390,7 +394,7 @@ def suggest_photos(date: str, bbox: str | None = None, limit: int = 200):
 
 @app.get("/api/photos/sidecar", response_model=SidecarGetResponse)
 def get_sidecar(path: str):
-    img = resolve_data_path(path)
+    img = resolve_media_path(path)
     if not img.exists():
         return JSONResponse({"ok": False, "error": "Not found"}, status_code=404)
 
@@ -400,7 +404,7 @@ def get_sidecar(path: str):
         save_sidecar(sc_path, sidecar)
 
     return SidecarGetResponse(
-        path=str(img.relative_to(DATA_DIR)).replace("\\", "/"),
+        path=str(img.relative_to(MEDIA_DIR)).replace("\\", "/"),
         sidecarPath=str(sc_path.relative_to(DATA_DIR)).replace("\\", "/"),
         sidecar=SidecarModel(**sidecar),
     )
@@ -408,7 +412,7 @@ def get_sidecar(path: str):
 
 @app.post("/api/photos/sidecar", response_model=SidecarUpdateResponse)
 def update_sidecar(req: SidecarUpdateRequest):
-    img = resolve_data_path(req.path)
+    img = resolve_media_path(req.path)
     if not img.exists():
         return JSONResponse({"ok": False, "error": "Not found"}, status_code=404)
 
@@ -418,7 +422,7 @@ def update_sidecar(req: SidecarUpdateRequest):
     save_sidecar(sc_path, sidecar)
 
     return SidecarUpdateResponse(
-        path=str(img.relative_to(DATA_DIR)).replace("\\", "/"),
+        path=str(img.relative_to(MEDIA_DIR)).replace("\\", "/"),
         sidecarPath=str(sc_path.relative_to(DATA_DIR)).replace("\\", "/"),
         sidecar=SidecarModel(**sidecar),
     )
@@ -429,7 +433,7 @@ def bulk_update_sidecars(req: SidecarBulkUpdateRequest):
     updated = 0
     for rel in req.paths:
         try:
-            img = resolve_data_path(rel)
+            img = resolve_media_path(rel)
         except Exception:
             continue
         if not img.exists():
@@ -463,7 +467,7 @@ def trash_photos(req: TrashPhotosRequest):
     trashed_rels: list[str] = []
     for rel in req.paths:
         try:
-            img = resolve_data_path(rel)
+            img = resolve_media_path(rel)
         except Exception:
             continue
         if not img.exists():
@@ -502,7 +506,9 @@ def trash_photos(req: TrashPhotosRequest):
 
         # Move sidecar if present
         if sc_path.exists():
-            dst_sc = dst_img.with_suffix(dst_img.suffix + ".json")
+            dst_rel = dst_img.relative_to(MEDIA_DIR).as_posix()
+            dst_sc = DATA_DIR / f"{dst_rel}.json"
+            dst_sc.parent.mkdir(parents=True, exist_ok=True)
             try:
                 sc_path.rename(dst_sc)
             except Exception:
@@ -515,7 +521,7 @@ def trash_photos(req: TrashPhotosRequest):
 
         # Move thumbnail if present (keep restore possible)
         try:
-            rel_under_data = img.relative_to(DATA_DIR).as_posix()
+            rel_under_data = img.relative_to(MEDIA_DIR).as_posix()
             thumb_abs = thumb_path_for(rel_under_data)
             if thumb_abs.exists():
                 thumb_dst = (THUMBS_TRASH_DIR / batch / rel_under_data).resolve()
@@ -544,7 +550,7 @@ def trash_photos(req: TrashPhotosRequest):
     except Exception:
         pass
 
-    return TrashPhotosResponse(trashed=trashed, batch=str(trash_batch_dir.relative_to(DATA_DIR)).replace("\\", "/"))
+    return TrashPhotosResponse(trashed=trashed, batch=str(trash_batch_dir.relative_to(MEDIA_DIR)).replace("\\", "/"))
 
 
 @app.post("/api/trips/import-gpx")
@@ -604,18 +610,18 @@ def trash_trips(req: TrashTripsRequest):
             continue
 
         src = (TRIPS_DIR / rel).resolve()
-        # Prevent traversal / ensure under TRIPS_DIR
+        src_media = (TRIPS_MEDIA_DIR / rel).resolve()
         try:
             src.relative_to(TRIPS_DIR)
+            src_media.relative_to(TRIPS_MEDIA_DIR)
         except Exception:
             continue
 
-        if not src.exists() or not src.is_dir():
-            # Still remove from index (stale)
-            to_remove.add(trip_id)
+        if not src.is_dir() or not src_media.is_dir():
             continue
 
         dst = (trash_batch_dir / rel).resolve()
+        dst_media = (TRIPS_MEDIA_TRASH_DIR / batch / rel).resolve()
         try:
             dst.parent.mkdir(parents=True, exist_ok=True)
             src.rename(dst)
@@ -625,6 +631,21 @@ def trash_trips(req: TrashTripsRequest):
 
                 shutil.move(str(src), str(dst))
             except Exception:
+                continue
+
+        try:
+            dst_media.parent.mkdir(parents=True, exist_ok=True)
+            src_media.rename(dst_media)
+        except Exception:
+            try:
+                import shutil
+
+                shutil.move(str(src_media), str(dst_media))
+            except Exception:
+                try:
+                    dst.rename(src)
+                except Exception:
+                    pass
                 continue
 
         to_remove.add(trip_id)
@@ -800,7 +821,7 @@ async def upload_photos(files: List[UploadFile] = File(...)):
         if h and h in sha_idx:
             print(f"SKIPPED Duplicate: {f.filename} (Hash: {h[:8]}...)") # Neu
             existing_rel = sha_idx.get(h)
-            existing_path = (DATA_DIR / str(existing_rel)).resolve() if existing_rel else None
+            existing_path = (MEDIA_DIR / str(existing_rel)).resolve() if existing_rel else None
             if existing_path and existing_path.exists():
                 # Duplicate: don't save (remove just-written file)
                 try:
@@ -815,7 +836,7 @@ async def upload_photos(files: List[UploadFile] = File(...)):
 
         # 3) Thumbnail (best-effort)
         try:
-            rel_under_data = out_path.relative_to(DATA_DIR).as_posix()
+            rel_under_data = out_path.relative_to(MEDIA_DIR).as_posix()
             ensure_thumb(out_path, rel_under_data)
         except Exception:
             pass
@@ -827,7 +848,7 @@ async def upload_photos(files: List[UploadFile] = File(...)):
         sc_path = sidecar_path_for(out_path)
         save_sidecar(sc_path, sidecar)
 
-        rel = out_path.relative_to(DATA_DIR).as_posix()
+        rel = out_path.relative_to(MEDIA_DIR).as_posix()
         if h:
             sha_idx[h] = rel
         created = sidecar.get("createdAt")
@@ -835,7 +856,7 @@ async def upload_photos(files: List[UploadFile] = File(...)):
 
         saved.append(
             UploadSavedItem(
-                file=str(out_path.relative_to(DATA_DIR)).replace("\\", "/"),
+                file=str(out_path.relative_to(MEDIA_DIR)).replace("\\", "/"),
                 sidecar=str(sc_path.relative_to(DATA_DIR)).replace("\\", "/"),
                 originalName=f.filename,
             )
@@ -852,7 +873,7 @@ async def upload_photos(files: List[UploadFile] = File(...)):
         pass
 
     return UploadResponse(
-        batch=str(batch_dir.relative_to(DATA_DIR)).replace("\\", "/"),
+        batch=str(batch_dir.relative_to(MEDIA_DIR)).replace("\\", "/"),
         count=len(saved),
         saved=saved,
         duplicatesSkipped=duplicates_skipped,
@@ -950,7 +971,7 @@ async def upload_photos_zip(file: UploadFile = File(...)):
 
                     if h and h in sha_idx:
                         existing_rel = sha_idx.get(h)
-                        existing_path = (DATA_DIR / str(existing_rel)).resolve() if existing_rel else None
+                        existing_path = (MEDIA_DIR / str(existing_rel)).resolve() if existing_rel else None
                         if existing_path and existing_path.exists():
                             try:
                                 out_path.unlink(missing_ok=True)
@@ -963,7 +984,7 @@ async def upload_photos_zip(file: UploadFile = File(...)):
 
                     # Thumb
                     try:
-                        rel_under_data = out_path.relative_to(DATA_DIR).as_posix()
+                        rel_under_data = out_path.relative_to(MEDIA_DIR).as_posix()
                         ensure_thumb(out_path, rel_under_data)
                     except Exception:
                         pass
@@ -975,7 +996,7 @@ async def upload_photos_zip(file: UploadFile = File(...)):
                     sc_path = sidecar_path_for(out_path)
                     save_sidecar(sc_path, sidecar)
 
-                    rel = out_path.relative_to(DATA_DIR).as_posix()
+                    rel = out_path.relative_to(MEDIA_DIR).as_posix()
                     if h:
                         sha_idx[h] = rel
                     created = sidecar.get("createdAt")
@@ -983,7 +1004,7 @@ async def upload_photos_zip(file: UploadFile = File(...)):
 
                     saved.append(
                         UploadSavedItem(
-                            file=str(out_path.relative_to(DATA_DIR)).replace("\\", "/"),
+                            file=str(out_path.relative_to(MEDIA_DIR)).replace("\\", "/"),
                             sidecar=str(sc_path.relative_to(DATA_DIR)).replace("\\", "/"),
                             originalName=base,
                         )
@@ -1003,7 +1024,7 @@ async def upload_photos_zip(file: UploadFile = File(...)):
         pass
 
     return UploadResponse(
-        batch=str(batch_dir.relative_to(DATA_DIR)).replace("\\", "/"),
+        batch=str(batch_dir.relative_to(MEDIA_DIR)).replace("\\", "/"),
         count=len(saved),
         saved=saved,
         duplicatesSkipped=duplicates_skipped,

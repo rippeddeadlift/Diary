@@ -18,10 +18,15 @@ from __future__ import annotations
 import json
 import math
 from pathlib import Path
+import sys
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
-TRIPS_DIR = ROOT / "data" / "trips"
+sys.path.insert(0, str(ROOT))
+from server.config import DATA_DIR, MEDIA_DIR
+
+TRIPS_DIR = DATA_DIR / "trips"
+TRIPS_MEDIA_DIR = MEDIA_DIR / "trips"
 INDEX = TRIPS_DIR / "index.json"
 
 NS = {"g": "http://www.topografix.com/GPX/1/1"}
@@ -196,7 +201,7 @@ def main() -> None:
         if not gpx_name:
             continue
 
-        gpx_path = trip_dir / gpx_name
+        gpx_path = TRIPS_MEDIA_DIR / rel / gpx_name
         if not gpx_path.exists():
             continue
 

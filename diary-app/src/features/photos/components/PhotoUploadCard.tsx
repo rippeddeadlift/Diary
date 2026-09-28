@@ -84,8 +84,7 @@ export function PhotoUploadCard({ onUploaded }: { onUploaded: () => Promise<void
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          Upload landet in <code>data/photos/inbox/YYYY-MM-DD_HHMM/</code>. Für jedes Foto und Video wird automatisch ein{' '}
-          <code>.json</code> Sidecar angelegt. Videos: mp4, mov, m4v, webm.
+          Upload landet im Medienarchiv unter <code>photos/inbox/YYYY-MM-DD_HHMM/</code>. Sidecar-JSON bleibt in den Diary-Daten auf C:. Videos: mp4, mov, m4v, webm.
         </p>
 
         {/* Versteckte Inputs */}

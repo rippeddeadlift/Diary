@@ -22,8 +22,10 @@ def temp_data_dir(monkeypatch) -> Generator[Path, None, None]:
         
         # Patch config to use temp directory
         monkeypatch.setattr("server.config.DATA_DIR", tmp_path)
+        monkeypatch.setattr("server.config.MEDIA_DIR", tmp_path)
         monkeypatch.setattr("server.config.PHOTOS_INBOX_DIR", tmp_path / "photos" / "inbox")
         monkeypatch.setattr("server.photos_repo.DATA_DIR", tmp_path)
+        monkeypatch.setattr("server.photos_repo.MEDIA_DIR", tmp_path)
         monkeypatch.setattr("server.photos_repo.PHOTOS_INBOX_DIR", tmp_path / "photos" / "inbox")
         monkeypatch.setattr("server.photos_repo.SHA256_INDEX_PATH", tmp_path / "photos" / "_sha256_index.json")
         monkeypatch.setattr("server.photos_repo.GALLERY_ORDER_PATH", tmp_path / "photos" / "_gallery_order.json")
@@ -34,11 +36,14 @@ def temp_data_dir(monkeypatch) -> Generator[Path, None, None]:
 
         # Patch server.main module-level paths (computed at import time)
         monkeypatch.setattr("server.main.DATA_DIR", tmp_path)
+        monkeypatch.setattr("server.main.MEDIA_DIR", tmp_path)
         monkeypatch.setattr("server.main.PHOTOS_INBOX_DIR", tmp_path / "photos" / "inbox")
         monkeypatch.setattr("server.main.TRASH_DIR", tmp_path / "photos" / "_trash")
         monkeypatch.setattr("server.main.THUMBS_DIR", tmp_path / "photos" / "_thumbs")
         monkeypatch.setattr("server.main.THUMBS_TRASH_DIR", tmp_path / "photos" / "_thumbs" / "_trash")
         monkeypatch.setattr("server.main.TRIPS_DIR", tmp_path / "trips")
+        monkeypatch.setattr("server.main.TRIPS_MEDIA_DIR", tmp_path / "trips")
+        monkeypatch.setattr("server.main.TRIPS_MEDIA_TRASH_DIR", tmp_path / "trips" / "_trash")
         monkeypatch.setattr("server.main.TRIPS_INDEX", tmp_path / "trips" / "index.json")
         monkeypatch.setattr("server.main.TRIPS_TRASH_DIR", tmp_path / "trips" / "_trash")
         

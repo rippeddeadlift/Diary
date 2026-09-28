@@ -126,8 +126,29 @@ class TestPhotosEndpoints:
         page = client.get("/api/photos/inbox/all").json()
         item = next(it for it in page["items"] if it["path"].endswith(".mp4"))
         assert item["kind"] == "video"
-        assert item["url"] == f"/files/{item['path']}"
+        assert item["url"] == f"/media/{item['path']}"
         assert (temp_data_dir / item["path"]).read_bytes() == payload
+
+    def test_upload_separates_media_from_app_data(self, client, temp_data_dir, tmp_path, monkeypatch, sample_image):
+        media_dir = tmp_path / "archive"
+        inbox_dir = media_dir / "photos" / "inbox"
+        inbox_dir.mkdir(parents=True)
+        monkeypatch.setattr("server.main.MEDIA_DIR", media_dir)
+        monkeypatch.setattr("server.main.PHOTOS_INBOX_DIR", inbox_dir)
+        monkeypatch.setattr("server.photos_repo.MEDIA_DIR", media_dir)
+        monkeypatch.setattr("server.photos_repo.PHOTOS_INBOX_DIR", inbox_dir)
+
+        response = client.post(
+            "/api/photos/upload",
+            files=[("files", ("photo.jpg", sample_image.read_bytes(), "image/jpeg"))],
+        )
+
+        assert response.status_code == 200, response.text
+        saved = response.json()["saved"][0]
+        assert (media_dir / saved["file"]).is_file()
+        assert (temp_data_dir / saved["sidecar"]).is_file()
+        assert not (media_dir / f"{saved['file']}.json").exists()
+        assert (temp_data_dir / "photos" / "_sha256_index.json").exists()
 
     def test_suggest_photos_invalid_date(self, client):
         """Test photo suggestion with invalid date."""
@@ -163,6 +184,50 @@ class TestPhotosEndpoints:
 
 class TestTripsEndpoints:
     """Tests for trip-related endpoints."""
+
+    def test_gpx_import_separates_route_from_trip_metadata(self, tmp_path, monkeypatch):
+        from tools import import_gpx_inbox
+
+        app_data = tmp_path / "app-data"
+        media_data = tmp_path / "media-data"
+        source_dir = tmp_path / "downloads"
+        source_dir.mkdir()
+        source_gpx = source_dir / "2024-01-01_123456_Cycling.gpx"
+        source_gpx.write_text(
+            '<gpx xmlns="http://www.topografix.com/GPX/1/1"><trk><trkseg>'
+            '<trkpt lat="50.0" lon="6.0"><time>2024-01-01T10:00:00Z</time></trkpt>'
+            '<trkpt lat="50.1" lon="6.1"><time>2024-01-01T10:10:00Z</time></trkpt>'
+            '</trkseg></trk></gpx>',
+            encoding="utf-8",
+        )
+
+        trips_dir = app_data / "trips"
+        media_trips_dir = media_data / "trips"
+        import_dir = media_data / "import" / "gpx"
+        monkeypatch.setattr(import_gpx_inbox, "DATA_DIR", app_data)
+        monkeypatch.setattr(import_gpx_inbox, "MEDIA_DIR", media_data)
+        monkeypatch.setattr(import_gpx_inbox, "IMPORT_DIR", import_dir)
+        monkeypatch.setattr(import_gpx_inbox, "DONE_DIR", import_dir / "_done")
+        monkeypatch.setattr(import_gpx_inbox, "TRIPS_DIR", trips_dir)
+        monkeypatch.setattr(import_gpx_inbox, "TRIPS_MEDIA_DIR", media_trips_dir)
+        monkeypatch.setattr(import_gpx_inbox, "INDEX_PATH", trips_dir / "index.json")
+        monkeypatch.setattr(
+            "sys.argv",
+            ["import_gpx_inbox", "--source", str(source_dir)],
+        )
+
+        assert import_gpx_inbox.main() == 0
+
+        index = json.loads((trips_dir / "index.json").read_text(encoding="utf-8"))
+        entry = index["trips"][0]
+        meta_path = trips_dir / entry["path"] / "meta.json"
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        route_path = media_trips_dir / entry["path"] / meta["gpx"]
+
+        assert route_path.is_file()
+        assert meta_path.is_file()
+        assert not (trips_dir / entry["path"] / meta["gpx"]).exists()
+        assert (import_dir / "_done" / source_gpx.name).is_file()
 
     def test_update_trip_meta_no_index(self, client, temp_data_dir):
         """Return not found when the trips index is missing."""

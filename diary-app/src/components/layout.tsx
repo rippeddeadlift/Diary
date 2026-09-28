@@ -1,20 +1,12 @@
 import { ThemeToggle } from './ThemeToggle'
 import type { ReactNode } from 'react'
-
-type Page = 'menu' | 'photos' | 'trips' | 'fitness'
+import { FEATURE_ITEMS, type Page } from '@/features/registry'
 
 interface LayoutProps {
   children: ReactNode
   page: Page
   setPage: (page: Page) => void
 }
-
-const NAV_ITEMS: { id: Page; label: string }[] = [
-  { id: 'menu', label: 'Menü' },
-  { id: 'photos', label: 'Fotos' },
-  { id: 'trips', label: 'Touren' },
-  { id: 'fitness', label: 'Fitness' },
-]
 
 export function Layout({ children, page, setPage }: LayoutProps) {
   return (
@@ -25,14 +17,17 @@ export function Layout({ children, page, setPage }: LayoutProps) {
           {/* Links: App-Titel + Navigationslinks */}
           <div className="flex items-center gap-6">
             <span 
-              onClick={() => setPage('menu')} 
+              onClick={() => setPage('home')} 
               className="text-xl font-semibold tracking-tight cursor-pointer"
             >
               Tagebuch
             </span>
 
             <nav className="flex items-center gap-1 text-sm font-medium">
-              {NAV_ITEMS.map((item) => {
+              {[
+                { id: 'home' as const, label: 'Home' },
+                ...FEATURE_ITEMS,
+              ].map((item) => {
                 const isActive = page === item.id
                 return (
                   <button

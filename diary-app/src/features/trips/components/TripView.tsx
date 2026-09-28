@@ -94,7 +94,7 @@ export function TripView({
             <AlertDialogHeader>
               <AlertDialogTitle>Tour in den Papierkorb verschieben?</AlertDialogTitle>
               <AlertDialogDescription>
-                Der Trip-Ordner wird nach <code>data/trips/_trash/…</code> verschoben. Du kannst ihn später wiederherstellen.
+                Trip-Metadaten werden unter <code>Diary/data/trips/_trash/…</code> abgelegt; die GPX-Datei kommt in den Papierkorb des Medienarchivs.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
