@@ -65,16 +65,47 @@
       "problemMatcher": []
     },
     {
+      "label": "Diary: Open Firefox",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "Start-Sleep -Seconds 2; Start-Process firefox.exe 'http://localhost:5173/'"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Diary: Start (Backend + Frontend + Firefox)",
+      "dependsOrder": "parallel",
+      "dependsOn": [
+        "Diary: Backend (FastAPI)",
+        "Diary: Frontend (Vite)",
+        "Diary: Open Firefox"
+      ],
+      "problemMatcher": []
+    },
+    {
       "label": "Diary: Start (Backend + Frontend + Chrome)",
       "dependsOrder": "parallel",
-      "dependsOn": ["Diary: Backend (FastAPI)", "Diary: Frontend (Vite)", "Diary: Open Chrome"],
+      "dependsOn": [
+        "Diary: Backend (FastAPI)",
+        "Diary: Frontend (Vite)",
+        "Diary: Open Chrome"
+      ],
       "problemMatcher": []
     },
     {
       "label": "Diary: Tests (All)",
       "dependsOrder": "parallel",
-      "dependsOn": ["Diary: Tests (Backend / pytest)", "Diary: Tests (Frontend / vitest)"],
+      "dependsOn": [
+        "Diary: Tests (Backend / pytest)",
+        "Diary: Tests (Frontend / vitest)"
+      ],
       "problemMatcher": []
-    }
+    },
+
   ]
 }

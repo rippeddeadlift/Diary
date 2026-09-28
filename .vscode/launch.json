@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Diary: Dev (Backend + Frontend)",
+      "name": "Diary: Dev (Backend + Frontend Chrome)",
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "powershell",
@@ -11,9 +11,26 @@
         "-ExecutionPolicy",
         "Bypass",
         "-Command",
-        "Write-Host 'Diary dev servers started via preLaunchTask. Close this debug session to stop nothing (terminate terminals manually).'; Start-Sleep -Seconds 360000"
+        "Write-Host 'Diary dev session active. Press Shift+F5 to stop all servers.'; Start-Sleep -Seconds 360000"
       ],
       "preLaunchTask": "Diary: Start (Backend + Frontend + Chrome)",
+      "postDebugTask": "Diary: Stop All",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Diary: Dev (Backend + Frontend Firefox)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "Write-Host 'Diary dev session active. Press Shift+F5 to stop all servers.'; Start-Sleep -Seconds 360000"
+      ],
+      "preLaunchTask": "Diary: Start (Backend + Frontend + Firefox)",
+      "postDebugTask": "Diary: Stop All",
       "console": "integratedTerminal"
     },
     {
