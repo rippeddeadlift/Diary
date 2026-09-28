@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import json
+import zipfile
 from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
+import time
 
 import pytest
 from fastapi.testclient import TestClient
@@ -28,6 +30,66 @@ class TestHealthEndpoint:
         data = response.json()
         assert data["ok"] is True
         assert "time" in data
+
+
+class TestBackupEndpoints:
+    def test_export_and_restore_data_zip(self, client, temp_data_dir, tmp_path, monkeypatch):
+        (temp_data_dir / "settings.json").write_text('{"private": true}', encoding="utf-8")
+        media_dir = tmp_path / "external-media"
+        media_dir.mkdir()
+        (media_dir / "original.jpg").write_bytes(b"media stays outside the data backup")
+        monkeypatch.setattr("server.main.MEDIA_DIR", media_dir)
+
+        started = client.post("/api/backup/export")
+        assert started.status_code == 200
+        job_id = started.json()["jobId"]
+        for _ in range(200):
+            status = client.get(f"/api/backup/export/{job_id}")
+            assert status.status_code == 200
+            if status.json()["status"] != "running":
+                break
+            time.sleep(0.01)
+        assert status.json()["status"] == "ready"
+        saved = client.post(f"/api/backup/export/{job_id}/save-to-media")
+        assert saved.status_code == 200, saved.text
+        backup_path = Path(saved.json()["path"])
+        assert backup_path.parent == media_dir
+        with zipfile.ZipFile(backup_path) as archive:
+            assert archive.read("settings.json") == b'{"private": true}'
+            assert "original.jpg" not in archive.namelist()
+
+        backup = BytesIO()
+        with zipfile.ZipFile(backup, "w", zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("photos/custom.json", '{"tags":["saved"]}')
+        backup.seek(0)
+        restored = client.post(
+            "/api/backup/import",
+            files={"file": ("diary-data.zip", backup.getvalue(), "application/zip")},
+            data={"confirm_replace": "true"},
+        )
+        assert restored.status_code == 200, restored.text
+        assert restored.json()["files"] == 1
+        assert not (temp_data_dir / "settings.json").exists()
+        assert json.loads((temp_data_dir / "photos" / "custom.json").read_text(encoding="utf-8")) == {
+            "tags": ["saved"]
+        }
+        assert (media_dir / "original.jpg").read_bytes() == b"media stays outside the data backup"
+        assert backup_path.is_file()
+
+    def test_import_rejects_unsafe_zip_without_replacing_data(self, client, temp_data_dir):
+        marker = temp_data_dir / "keep.json"
+        marker.write_text("keep", encoding="utf-8")
+        unsafe_zip = BytesIO()
+        with zipfile.ZipFile(unsafe_zip, "w") as archive:
+            archive.writestr("../outside.json", "unsafe")
+
+        response = client.post(
+            "/api/backup/import",
+            files={"file": ("bad.zip", unsafe_zip.getvalue(), "application/zip")},
+            data={"confirm_replace": "true"},
+        )
+        assert response.status_code == 400
+        assert marker.read_text(encoding="utf-8") == "keep"
 
 
 class TestPhotosEndpoints:

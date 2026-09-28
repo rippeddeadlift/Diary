@@ -14,14 +14,20 @@ from urllib.parse import quote
 import zipfile
 import tempfile
 import shutil
+import threading
+import time
+from uuid import uuid4
 
 from PIL import Image, ImageOps, ImageStat
 import pillow_heif
 
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from starlette.background import BackgroundTask
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from . import photos_repo
+from .backups import create_backup_archive, restore_backup_archive
 from .config import DATA_DIR, MEDIA_DIR, MEDIA_EXTS, PHOTOS_INBOX_DIR, ROOT, VIDEO_EXTS
 
 TRASH_DIR = MEDIA_DIR / "photos" / "_trash"
@@ -36,6 +42,8 @@ TRIPS_MEDIA_TRASH_DIR = TRIPS_MEDIA_DIR / "_trash"
 MOVIES_CONFIG_PATH = DATA_DIR / "movies" / "library.json"
 MOVIE_THUMBS_DIR = DATA_DIR / "movies" / "_thumbs"
 MOVIE_EXTS = VIDEO_EXTS | {".avi", ".mkv", ".mpeg", ".mpg", ".wmv"}
+BACKUP_EXPORTS: dict[str, dict[str, Any]] = {}
+BACKUP_EXPORTS_LOCK = threading.Lock()
 
 
 def thumb_path_for(rel_under_data: str) -> Path:
@@ -193,6 +201,152 @@ app.mount("/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
 @app.get("/api/health")
 def health():
     return {"ok": True, "time": datetime.now().astimezone().isoformat(timespec="seconds")}
+
+
+def _run_backup_export(job_id: str) -> None:
+    def update_progress(files_done: int, total_files: int) -> None:
+        with BACKUP_EXPORTS_LOCK:
+            job = BACKUP_EXPORTS.get(job_id)
+            if job is not None:
+                job["filesDone"] = files_done
+                job["totalFiles"] = total_files
+
+    try:
+        archive = create_backup_archive(DATA_DIR, on_progress=update_progress)
+    except Exception as exc:
+        with BACKUP_EXPORTS_LOCK:
+            job = BACKUP_EXPORTS.get(job_id)
+            if job is not None:
+                job.update(status="error", error=str(exc))
+        return
+
+    with BACKUP_EXPORTS_LOCK:
+        job = BACKUP_EXPORTS.get(job_id)
+        if job is not None:
+            job.update(status="ready", archive=archive, filesDone=job["totalFiles"])
+        else:
+            archive.unlink(missing_ok=True)
+
+
+def _cleanup_backup_export(job_id: str, archive: Path) -> None:
+    archive.unlink(missing_ok=True)
+    with BACKUP_EXPORTS_LOCK:
+        BACKUP_EXPORTS.pop(job_id, None)
+
+
+@app.post("/api/backup/export")
+def start_data_backup(request: Request):
+    _check_local_request(request)
+    with BACKUP_EXPORTS_LOCK:
+        for job_id, job in list(BACKUP_EXPORTS.items()):
+            age = time.time() - job["createdAt"]
+            if job["status"] == "running":
+                raise HTTPException(status_code=409, detail="A backup export is already running or ready to download")
+            if job["status"] == "ready" and age <= 3600:
+                raise HTTPException(status_code=409, detail="A backup export is already running or ready to download")
+            if age > 3600:
+                archive = job.get("archive")
+                if isinstance(archive, Path):
+                    archive.unlink(missing_ok=True)
+                BACKUP_EXPORTS.pop(job_id, None)
+
+        job_id = uuid4().hex
+        BACKUP_EXPORTS[job_id] = {
+            "status": "running",
+            "filesDone": 0,
+            "totalFiles": 0,
+            "createdAt": time.time(),
+        }
+    threading.Thread(target=_run_backup_export, args=(job_id,), daemon=True).start()
+    return {"jobId": job_id, "status": "running"}
+
+
+@app.get("/api/backup/export/{job_id}")
+def get_data_backup_status(job_id: str, request: Request):
+    _check_local_request(request)
+    with BACKUP_EXPORTS_LOCK:
+        job = BACKUP_EXPORTS.get(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="Backup export not found")
+        return {
+            "jobId": job_id,
+            "status": job["status"],
+            "filesDone": job["filesDone"],
+            "totalFiles": job["totalFiles"],
+            "error": job.get("error"),
+        }
+
+
+@app.get("/api/backup/export/{job_id}/download")
+def download_data_backup(job_id: str, request: Request):
+    _check_local_request(request)
+    with BACKUP_EXPORTS_LOCK:
+        job = BACKUP_EXPORTS.get(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="Backup export not found")
+        if job["status"] != "ready":
+            raise HTTPException(status_code=409, detail="Backup export is not ready")
+        archive = job["archive"]
+    return FileResponse(
+        archive,
+        media_type="application/zip",
+        filename=f"diary-data-{datetime.now().strftime('%Y%m%d-%H%M%S')}.zip",
+        background=BackgroundTask(_cleanup_backup_export, job_id, archive),
+    )
+
+
+@app.post("/api/backup/export/{job_id}/save-to-media")
+def save_data_backup_to_media(job_id: str, request: Request):
+    _check_local_request(request)
+    with BACKUP_EXPORTS_LOCK:
+        job = BACKUP_EXPORTS.get(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="Backup export not found")
+        if job["status"] != "ready":
+            raise HTTPException(status_code=409, detail="Backup export is not ready")
+        job["status"] = "saving"
+        archive = job["archive"]
+
+    MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    destination = MEDIA_DIR / f"diary-backup-{stamp}.zip"
+    suffix = 2
+    while destination.exists():
+        destination = MEDIA_DIR / f"diary-backup-{stamp}-{suffix}.zip"
+        suffix += 1
+    try:
+        shutil.move(str(archive), str(destination))
+    except OSError as exc:
+        with BACKUP_EXPORTS_LOCK:
+            job = BACKUP_EXPORTS.get(job_id)
+            if job is not None:
+                job["status"] = "ready"
+        raise HTTPException(status_code=500, detail=f"Could not save backup to media folder: {exc}") from exc
+
+    with BACKUP_EXPORTS_LOCK:
+        BACKUP_EXPORTS.pop(job_id, None)
+    return {"ok": True, "path": str(destination)}
+
+
+@app.post("/api/backup/import")
+def import_data_backup(
+    request: Request,
+    file: UploadFile = File(...),
+    confirm_replace: bool = Form(False),
+):
+    _check_local_request(request)
+    if not confirm_replace:
+        raise HTTPException(status_code=400, detail="Confirm replacing the current data directory")
+    try:
+        file.file.seek(0)
+        file_count, unpacked_bytes = restore_backup_archive(DATA_DIR, file.file)
+    except (OSError, RuntimeError, ValueError, zipfile.BadZipFile, zipfile.LargeZipFile) as exc:
+        raise HTTPException(status_code=400, detail=f"Could not restore backup: {exc}") from exc
+
+    photos_repo._gallery_disk_synced = False
+    photos_repo._ranked_rels = None
+    photos_repo._ranked_index = None
+    return {"ok": True, "files": file_count, "unpackedBytes": unpacked_bytes}
 
 
 def _movie_folder() -> Path | None:

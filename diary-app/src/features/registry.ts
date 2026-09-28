@@ -1,6 +1,7 @@
 import { FitnessPage } from './fitness/fitness-page'
 import { MoviesPage } from './movies/movies-page'
 import { PhotosPage } from './photos/photos-page'
+import { SettingsPage } from './settings/settings-page'
 import { TripsPage } from './trips/TripsPage'
 
 export const FEATURES = {
@@ -8,6 +9,7 @@ export const FEATURES = {
   trips: { label: 'Touren', component: TripsPage },
   fitness: { label: 'Fitness', component: FitnessPage },
   movies: { label: 'Filme', component: MoviesPage },
+  settings: { label: 'Einstellungen', component: SettingsPage },
 } as const
 
 export type FeatureId = keyof typeof FEATURES
