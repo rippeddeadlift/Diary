@@ -39,6 +39,8 @@ def temp_data_dir(monkeypatch) -> Generator[Path, None, None]:
         monkeypatch.setattr("server.main.MEDIA_DIR", tmp_path)
         monkeypatch.setattr("server.photos.routes.DATA_DIR", tmp_path)
         monkeypatch.setattr("server.photos.routes.MEDIA_DIR", tmp_path)
+        monkeypatch.setattr("server.photos.sidecar_routes.DATA_DIR", tmp_path)
+        monkeypatch.setattr("server.photos.sidecar_routes.MEDIA_DIR", tmp_path)
         monkeypatch.setattr("server.backups.routes.DATA_DIR", tmp_path)
         monkeypatch.setattr("server.backups.routes.MEDIA_DIR", tmp_path)
         monkeypatch.setattr("server.main.PHOTOS_INBOX_DIR", tmp_path / "photos" / "inbox")

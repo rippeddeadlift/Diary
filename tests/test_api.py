@@ -311,6 +311,30 @@ class TestMoviesEndpoints:
         )
         assert response.status_code == 404
 
+class TestSidecarEndpoints:
+    def test_sidecar_update_and_bulk_update(self, client, temp_data_dir):
+        image = temp_data_dir / "photos" / "inbox" / "sidecar-test.jpg"
+        image.write_bytes(b"photo")
+        path = "photos/inbox/sidecar-test.jpg"
+
+        updated = client.post(
+            "/api/photos/sidecar",
+            json={"path": path, "people": ["Alice"], "tags": ["hiking"], "caption": "Trail"},
+        )
+        assert updated.status_code == 200
+        assert updated.json()["sidecar"]["caption"] == "Trail"
+
+        bulk = client.post(
+            "/api/photos/sidecar/bulk",
+            json={"paths": [path], "addTags": ["summer"]},
+        )
+        assert bulk.status_code == 200
+        assert bulk.json()["updated"] == 1
+
+        retrieved = client.get("/api/photos/sidecar", params={"path": path})
+        assert retrieved.status_code == 200
+        assert retrieved.json()["sidecar"]["tags"] == ["hiking", "summer"]
+
 
 class TestTripsEndpoints:
     """Tests for trip-related endpoints."""

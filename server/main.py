@@ -20,6 +20,7 @@ from . import photos_repo
 from .backups.routes import router as backup_router
 from .movies.routes import router as movies_router
 from .photos.routes import router as photos_router
+from .photos.sidecar_routes import router as sidecar_router
 from .trips.routes import router as trips_router
 from .fitness.routes import router as fitness_router
 from .config import DATA_DIR, MEDIA_DIR, MEDIA_EXTS, PHOTOS_INBOX_DIR
@@ -30,12 +31,6 @@ THUMBS_DIR = DATA_DIR / "photos" / "_thumbs"
 THUMBS_TRASH_DIR = THUMBS_DIR / "_trash"
 
 from .models import (
-    SidecarGetResponse,
-    SidecarModel,
-    SidecarUpdateRequest,
-    SidecarUpdateResponse,
-    SidecarBulkUpdateRequest,
-    SidecarBulkUpdateResponse,
     TrashPhotosRequest,
     TrashPhotosResponse,
     UploadResponse,
@@ -83,6 +78,7 @@ app.mount("/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
 app.include_router(backup_router)
 app.include_router(movies_router)
 app.include_router(photos_router)
+app.include_router(sidecar_router)
 app.include_router(trips_router)
 app.include_router(fitness_router)
 
@@ -90,68 +86,6 @@ app.include_router(fitness_router)
 @app.get("/api/health")
 def health():
     return {"ok": True, "time": datetime.now().astimezone().isoformat(timespec="seconds")}
-
-
-@app.get("/api/photos/sidecar", response_model=SidecarGetResponse)
-def get_sidecar(path: str):
-    img = resolve_media_path(path)
-    if not img.exists():
-        return JSONResponse({"ok": False, "error": "Not found"}, status_code=404)
-
-    sc_path = sidecar_path_for(img)
-    sidecar = load_or_init_sidecar_for_image(img)
-    if not sc_path.exists():
-        save_sidecar(sc_path, sidecar)
-
-    return SidecarGetResponse(
-        path=str(img.relative_to(MEDIA_DIR)).replace("\\", "/"),
-        sidecarPath=str(sc_path.relative_to(DATA_DIR)).replace("\\", "/"),
-        sidecar=SidecarModel(**sidecar),
-    )
-
-
-@app.post("/api/photos/sidecar", response_model=SidecarUpdateResponse)
-def update_sidecar(req: SidecarUpdateRequest):
-    img = resolve_media_path(req.path)
-    if not img.exists():
-        return JSONResponse({"ok": False, "error": "Not found"}, status_code=404)
-
-    sc_path = sidecar_path_for(img)
-    sidecar = load_or_init_sidecar_for_image(img)
-    sidecar = update_sidecar_fields(sidecar, req.people, req.tags, req.caption)
-    save_sidecar(sc_path, sidecar)
-
-    return SidecarUpdateResponse(
-        path=str(img.relative_to(MEDIA_DIR)).replace("\\", "/"),
-        sidecarPath=str(sc_path.relative_to(DATA_DIR)).replace("\\", "/"),
-        sidecar=SidecarModel(**sidecar),
-    )
-
-
-@app.post("/api/photos/sidecar/bulk", response_model=SidecarBulkUpdateResponse)
-def bulk_update_sidecars(req: SidecarBulkUpdateRequest):
-    updated = 0
-    for rel in req.paths:
-        try:
-            img = resolve_media_path(rel)
-        except Exception:
-            continue
-        if not img.exists():
-            continue
-
-        sc_path = sidecar_path_for(img)
-        sidecar = load_or_init_sidecar_for_image(img)
-        sidecar = bulk_toggle_sidecar_fields(
-            sidecar,
-            add_people=req.addPeople,
-            remove_people=req.removePeople,
-            add_tags=req.addTags,
-            remove_tags=req.removeTags,
-        )
-        save_sidecar(sc_path, sidecar)
-        updated += 1
-
-    return SidecarBulkUpdateResponse(updated=updated)
 
 
 @app.post("/api/photos/trash", response_model=TrashPhotosResponse)
