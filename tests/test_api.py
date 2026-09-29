@@ -264,8 +264,8 @@ class TestMoviesEndpoints:
         media_dir = tmp_path / "archive"
         inbox_dir = media_dir / "photos" / "inbox"
         inbox_dir.mkdir(parents=True)
-        monkeypatch.setattr("server.main.MEDIA_DIR", media_dir)
-        monkeypatch.setattr("server.main.PHOTOS_INBOX_DIR", inbox_dir)
+        monkeypatch.setattr("server.photos.upload_routes.MEDIA_DIR", media_dir)
+        monkeypatch.setattr("server.photos.upload_routes.PHOTOS_INBOX_DIR", inbox_dir)
         monkeypatch.setattr("server.photos_repo.MEDIA_DIR", media_dir)
         monkeypatch.setattr("server.photos_repo.PHOTOS_INBOX_DIR", inbox_dir)
 
@@ -374,6 +374,26 @@ class TestPhotoTrashEndpoints:
         assert json.loads((temp_data_dir / "photos" / "_sha256_index.json").read_text()) == {}
         assert json.loads((temp_data_dir / "photos" / "_gallery_paths.json").read_text()) == []
         assert json.loads((temp_data_dir / "photos" / "_gallery_order.json").read_text()) == {}
+
+
+class TestPhotoZipUploadEndpoints:
+    def test_zip_upload_extracts_media_and_creates_sidecar(self, client, temp_data_dir, sample_image):
+        archive_data = BytesIO()
+        with zipfile.ZipFile(archive_data, "w", zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("nested/zip-photo.jpg", sample_image.read_bytes())
+
+        response = client.post(
+            "/api/photos/upload-zip",
+            files={"file": ("photos.zip", archive_data.getvalue(), "application/zip")},
+        )
+
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data["count"] == 1
+        saved = data["saved"][0]
+        assert saved["originalName"] == "zip-photo.jpg"
+        assert (temp_data_dir / saved["file"]).is_file()
+        assert (temp_data_dir / saved["sidecar"]).is_file()
 
 
 class TestTripsEndpoints:
