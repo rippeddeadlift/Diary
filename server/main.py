@@ -11,6 +11,7 @@ from .photos.sidecar_routes import router as sidecar_router
 from .photos.trash_routes import router as trash_photos_router
 from .photos.upload_routes import router as upload_photos_router
 from .trips.routes import router as trips_router
+from .trips.trash_routes import router as trip_trash_router
 from .fitness.routes import router as fitness_router
 from .config import DATA_DIR, MEDIA_DIR
 
@@ -31,6 +32,7 @@ app.include_router(sidecar_router)
 app.include_router(trash_photos_router)
 app.include_router(upload_photos_router)
 app.include_router(trips_router)
+app.include_router(trip_trash_router)
 app.include_router(fitness_router)
 
 

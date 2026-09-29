@@ -468,6 +468,29 @@ class TestTripsEndpoints:
         data = response.json()
         assert data["trashed"] == 0
 
+    def test_trash_trip_moves_data_and_media(self, client, temp_data_dir):
+        trip_id = "trip-to-trash"
+        trip_rel = "2024-01-01-cycling"
+        data_trip = temp_data_dir / "trips" / trip_rel
+        media_trip = temp_data_dir / "media" / "trips" / trip_rel
+        data_trip.mkdir(parents=True)
+        media_trip.mkdir(parents=True)
+        (data_trip / "meta.json").write_text('{"title":"Ride"}', encoding="utf-8")
+        (media_trip / "route.gpx").write_text("<gpx />", encoding="utf-8")
+        (temp_data_dir / "trips" / "index.json").write_text(
+            json.dumps({"trips": [{"id": trip_id, "path": trip_rel}]}),
+            encoding="utf-8",
+        )
+
+        response = client.post("/api/trips/trash", json={"ids": [trip_id]})
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data["trashed"] == 1
+        batch = data["batch"].split("/")[-1]
+        assert (temp_data_dir / "trips" / "_trash" / batch / trip_rel / "meta.json").is_file()
+        assert (temp_data_dir / "media" / "trips" / "_trash" / batch / trip_rel / "route.gpx").is_file()
+        assert json.loads((temp_data_dir / "trips" / "index.json").read_text(encoding="utf-8"))["trips"] == []
+
 
 class TestFitnessEndpoints:
     def test_log_appends_sets_to_same_day(self, client, temp_data_dir):
