@@ -13,6 +13,7 @@ from starlette.datastructures import UploadFile
 from ..config import DATA_DIR, MEDIA_DIR, MEDIA_EXTS, PHOTOS_INBOX_DIR
 from ..models import UploadResponse, UploadSavedItem
 from . import repository
+from . import gallery_index
 from ..thumbnails import ensure_thumb
 
 
@@ -30,7 +31,7 @@ def _persist_upload_index(
     except Exception:
         pass
     try:
-        repository.remember_gallery_items(indexed)
+        gallery_index.remember_gallery_items(indexed)
     except Exception:
         pass
 

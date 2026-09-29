@@ -13,7 +13,7 @@ from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.background import BackgroundTask
 
-from ..photos import repository as photos_repo
+from ..photos import gallery_index
 from ..config import DATA_DIR, MEDIA_DIR
 from ..local_requests import check_local_request
 from .archive import create_backup_archive, latest_valid_backup, restore_backup_archive
@@ -170,7 +170,5 @@ def import_data_backup(
     except (OSError, RuntimeError, ValueError, zipfile.BadZipFile, zipfile.LargeZipFile) as exc:
         raise HTTPException(status_code=400, detail=f"Could not restore backup: {exc}") from exc
 
-    photos_repo._gallery_disk_synced = False
-    photos_repo._ranked_rels = None
-    photos_repo._ranked_index = None
+    gallery_index.reset_gallery_cache()
     return {"ok": True, "files": file_count, "unpackedBytes": unpacked_bytes}

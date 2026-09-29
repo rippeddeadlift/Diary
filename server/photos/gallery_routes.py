@@ -8,6 +8,7 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
 from . import repository as photos_repo
+from . import gallery_index
 from ..config import DATA_DIR, MEDIA_DIR, VIDEO_EXTS
 from ..models import GalleryItem, GalleryListResponse
 
@@ -82,28 +83,28 @@ def _gallery_item_for(img: Path) -> GalleryItem | None:
 def list_inbox_all(offset: int = 0, limit: int | None = None, before: str | None = None):
     """List inbox photos, optionally returning one page for progressive loading."""
     offset = max(0, offset)
-    cached_rels = photos_repo.load_gallery_paths() if limit is not None else []
-    if limit is not None and (cached_rels or photos_repo.GALLERY_ORDER_PATH.exists()):
+    cached_rels = gallery_index.load_gallery_paths() if limit is not None else []
+    if limit is not None and (cached_rels or gallery_index.GALLERY_ORDER_PATH.exists()):
         try:
-            added = photos_repo.sync_missing_gallery_items_once()
+            added = gallery_index.sync_missing_gallery_items_once()
         except Exception:
             added = 0
         if added:
-            cached_rels = photos_repo.load_gallery_paths()
+            cached_rels = gallery_index.load_gallery_paths()
 
-    if limit is not None and cached_rels and photos_repo.GALLERY_ORDER_PATH.exists():
-        photos_repo.load_gallery_order()
+    if limit is not None and cached_rels and gallery_index.GALLERY_ORDER_PATH.exists():
+        gallery_index.load_gallery_order()
 
     partial = False
     if limit is not None:
-        images, partial = photos_repo.newest_inbox_images(max(1, min(limit, 500)), before)
+        images, partial = gallery_index.newest_inbox_images(max(1, min(limit, 500)), before)
         total = len(cached_rels) if cached_rels else None
         offset = 0
     else:
-        images = photos_repo.list_inbox_images()
+        images = gallery_index.list_inbox_images()
         total = len(images)
         try:
-            photos_repo.save_gallery_paths([p.relative_to(MEDIA_DIR).as_posix() for p in images])
+            gallery_index.save_gallery_paths([p.relative_to(MEDIA_DIR).as_posix() for p in images])
         except Exception:
             pass
 
@@ -123,10 +124,10 @@ def list_inbox_all(offset: int = 0, limit: int | None = None, before: str | None
 
     if limit is None:
         items_dicts = [item.model_dump() for item in items]
-        photos_repo.sort_gallery_items(items_dicts)
+        gallery_index.sort_gallery_items(items_dicts)
         items = [GalleryItem(**item) for item in items_dicts]
         try:
-            photos_repo.save_gallery_order({item.path: item.createdAt for item in items})
+            gallery_index.save_gallery_order({item.path: item.createdAt for item in items})
         except Exception:
             pass
 
@@ -161,7 +162,7 @@ def suggest_photos(date: str, bbox: str | None = None, limit: int = 200):
             bbox_vals = None
 
     items: list[GalleryItem] = []
-    for img in photos_repo.list_inbox_images():
+    for img in gallery_index.list_inbox_images():
         if len(items) >= max(1, min(int(limit), 1000)):
             break
 

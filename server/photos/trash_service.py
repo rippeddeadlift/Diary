@@ -4,6 +4,7 @@ import shutil
 from datetime import datetime
 
 from . import repository as photos_repo
+from . import gallery_index
 from ..config import DATA_DIR, MEDIA_DIR, PHOTOS_INBOX_DIR
 from ..thumbnails import thumb_path_for
 
@@ -88,7 +89,7 @@ def trash_photo_items(paths: list[str]) -> tuple[int, str]:
     except Exception:
         pass
     try:
-        photos_repo.forget_gallery_items(trashed_rels)
+        gallery_index.forget_gallery_items(trashed_rels)
     except Exception:
         pass
 

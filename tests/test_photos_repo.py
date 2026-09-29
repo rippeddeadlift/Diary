@@ -13,7 +13,6 @@ from server.photos.repository import (
     ensure_sidecar_fields,
     is_image_file,
     load_sidecar,
-    parse_isoish,
     resolve_data_path,
     safe_name,
     save_sidecar,
@@ -22,6 +21,7 @@ from server.photos.repository import (
     unique_filename,
     update_sidecar_fields,
 )
+from server.photos.gallery_index import parse_isoish
 
 
 class TestSafeName:
