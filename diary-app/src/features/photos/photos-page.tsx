@@ -6,7 +6,7 @@ import { GalleryGrid } from './components/GalleryGrid'
 import { PhotoViewerDialog } from './components/PhotoViewerDialog'
 import { PhotoUploadCard } from './components/PhotoUploadCard'
 import { Button } from '@/components/ui/button'
-import { ArrowDownWideNarrow, Filter } from 'lucide-react'
+import { ArrowDownWideNarrow, ChevronDown, ChevronUp, Filter } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -85,7 +85,12 @@ export function PhotosPage() {
     const itemsByPath = new Map(filtered.map((it) => [it.path, it] as const))
     return Array.from(selectedPaths).map((path) => itemsByPath.get(path)).filter(Boolean) as GalleryItem[]
   }, [filtered, selectedPaths])
-
+  const handleScrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+  const handleScrollToBottom = () => {
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
+  }
   return (
     <div className="space-y-4">
       <PhotoUploadCard onUploaded={loadGallery} />
@@ -95,7 +100,7 @@ export function PhotosPage() {
             <div>
               <CardTitle className="text-base">Galerie</CardTitle>
               <div className="text-xs text-muted-foreground">
-                {filtered.length} Fotos und Videos 
+                {filtered.length} Fotos und Videos
                 {loadingMore ? ' …' : ''}
               </div>
             </div>
@@ -186,6 +191,8 @@ export function PhotosPage() {
               </div>
             </div>
           ) : null}
+
+
           {galleryErr ? <div className="text-sm text-destructive">{galleryErr}</div> : null}
 
           {galleryLoading && gallery.length === 0 ? (
@@ -204,7 +211,27 @@ export function PhotosPage() {
           )}
         </CardContent>
       </Card>
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2">
+        <Button
+          variant="secondary"
+          size="icon"
+          onClick={handleScrollToTop}
+          className="rounded-full shadow-lg hover:shadow-xl transition-all"
+          title="Zum Anfang springen"
+        >
+          <ChevronUp className="h-5 w-5" />
+        </Button>
 
+        <Button
+          variant="secondary"
+          size="icon"
+          onClick={handleScrollToBottom}
+          className="rounded-full shadow-lg hover:shadow-xl transition-all"
+          title="Zum Ende springen"
+        >
+          <ChevronDown className="h-5 w-5" />
+        </Button>
+      </div>
       <PhotoViewerDialog
         items={filtered}
         index={viewerIndex}
