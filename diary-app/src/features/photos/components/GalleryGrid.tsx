@@ -260,13 +260,12 @@ export function GalleryGrid({
         })}
       </div>
 
-      {items.length > 0 ? (
+      {items.length > 0 && sortMode === 'date' ? (
         <aside className="fixed right-3 top-[20vh] z-40 h-[60vh] w-9 select-none sm:right-4 sm:w-11">
           <div
             ref={timelineRef}
             role="slider"
             tabIndex={0}
-            aria-label={sortMode === 'added' ? 'In der Fotogalerie nach Hinzufügedatum navigieren' : 'In der Fotogalerie nach Aufnahmedatum navigieren'}
             aria-valuemin={0}
             aria-valuemax={items.length - 1}
             aria-valuenow={Math.min(activeIndex, items.length - 1)}
@@ -297,22 +296,6 @@ export function GalleryGrid({
             }}
             onFocus={() => setTimelineFocused(true)}
             onBlur={() => setTimelineFocused(false)}
-            onKeyDown={(event) => {
-              const step = event.shiftKey ? cols * 10 : cols
-              if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
-                event.preventDefault()
-                scrollToItem(activeIndex - step)
-              } else if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
-                event.preventDefault()
-                scrollToItem(activeIndex + step)
-              } else if (event.key === 'Home') {
-                event.preventDefault()
-                scrollToItem(0)
-              } else if (event.key === 'End') {
-                event.preventDefault()
-                scrollToItem(items.length - 1)
-              }
-            }}
           >
             <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border" />
             {dateMarks.map((mark) => (
@@ -336,13 +319,13 @@ export function GalleryGrid({
               style={{ top: `${previewPercentage}%` }}
             />
             {timelineFocused && previewLabel ? (
-  <span
-    aria-hidden="true"
-    className="pointer-events-none absolute right-full mr-2 -translate-y-1/2 whitespace-nowrap rounded border bg-background px-2 py-1 text-xs text-foreground shadow"
-    style={{ top: `${previewPercentage}%` }}
-  >
-    {previewLabel}
-  </span>
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute right-full mr-2 -translate-y-1/2 whitespace-nowrap rounded border bg-background px-2 py-1 text-xs text-foreground shadow"
+                style={{ top: `${previewPercentage}%` }}
+              >
+                {previewLabel}
+              </span>
             ) : null}
           </div>
         </aside>
