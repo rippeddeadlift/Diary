@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import json
-import mimetypes
-import ipaddress
 import os
 from datetime import datetime
 import re
@@ -10,25 +8,22 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Any, List
-from urllib.parse import quote
 import zipfile
 import tempfile
 import shutil
-import threading
-import time
-from uuid import uuid4
 
-from PIL import Image, ImageOps, ImageStat
+from PIL import Image, ImageOps
 import pillow_heif
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
-from starlette.background import BackgroundTask
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import photos_repo
-from .backups import create_backup_archive, latest_valid_backup, restore_backup_archive
+from .backups.routes import router as backup_router
+from .movies.routes import router as movies_router
 from .config import DATA_DIR, MEDIA_DIR, MEDIA_EXTS, PHOTOS_INBOX_DIR, ROOT, VIDEO_EXTS
+from .thumbnails import ensure_thumb, thumb_path_for
 
 TRASH_DIR = MEDIA_DIR / "photos" / "_trash"
 THUMBS_DIR = DATA_DIR / "photos" / "_thumbs"
@@ -39,104 +34,6 @@ TRIPS_INDEX = TRIPS_DIR / "index.json"
 TRIPS_TRASH_DIR = TRIPS_DIR / "_trash"
 TRIPS_MEDIA_DIR = MEDIA_DIR / "trips"
 TRIPS_MEDIA_TRASH_DIR = TRIPS_MEDIA_DIR / "_trash"
-MOVIES_CONFIG_PATH = DATA_DIR / "movies" / "library.json"
-MOVIE_THUMBS_DIR = DATA_DIR / "movies" / "_thumbs"
-MOVIE_EXTS = VIDEO_EXTS | {".avi", ".mkv", ".mpeg", ".mpg", ".wmv"}
-BACKUP_EXPORTS: dict[str, dict[str, Any]] = {}
-BACKUP_EXPORTS_LOCK = threading.Lock()
-
-
-def thumb_path_for(rel_under_data: str) -> Path:
-    # rel_under_data like: photos/inbox/.../x.jpg
-    return (THUMBS_DIR / rel_under_data).resolve()
-
-
-def ensure_video_poster(video_abs: Path, rel_under_data: str) -> None:
-    """Grab one JPEG frame for the gallery tile. Needs ffmpeg on PATH."""
-    dst = thumb_path_for(rel_under_data).with_suffix(".jpg")
-    _generate_video_poster(video_abs, dst)
-
-
-def _generate_video_poster(video_abs: Path, dst: Path) -> None:
-    if dst.exists():
-        return
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        probe = subprocess.run(
-            [
-                "ffprobe", "-v", "error", "-show_entries", "format=duration",
-                "-of", "default=noprint_wrappers=1:nokey=1", str(video_abs),
-            ],
-            capture_output=True,
-            text=True,
-            timeout=15,
-            check=False,
-        )
-        duration = float(probe.stdout.strip())
-        sample_times = [duration * fraction for fraction in (0.1, 0.25, 0.5)]
-    except (OSError, ValueError, subprocess.TimeoutExpired):
-        sample_times = [10.0, 30.0, 60.0]
-
-    candidate = dst.with_name(f"{dst.stem}.candidate.jpg")
-    best_brightness = -1.0
-    try:
-        for sample_time in sample_times:
-            try:
-                subprocess.run(
-                    [
-                        "ffmpeg", "-y", "-ss", f"{sample_time:.3f}", "-i", str(video_abs),
-                        "-frames:v", "1", "-vf",
-                        "scale=512:512:force_original_aspect_ratio=increase,crop=512:512",
-                        str(candidate),
-                    ],
-                    capture_output=True,
-                    timeout=30,
-                    check=False,
-                )
-                with Image.open(candidate) as image:
-                    brightness = ImageStat.Stat(image.convert("L")).mean[0]
-                if brightness > best_brightness:
-                    shutil.copyfile(candidate, dst)
-                    best_brightness = brightness
-                if brightness >= 12:
-                    break
-            except (OSError, subprocess.TimeoutExpired):
-                continue
-    finally:
-        candidate.unlink(missing_ok=True)
-
-
-def ensure_thumb(img_abs: Path, rel_under_data: str, *, max_size: int = 512) -> None:
-    """Best-effort thumbnail generation. Creates THUMBS_DIR/<rel_under_data>."""
-
-    if img_abs.suffix.lower() in VIDEO_EXTS:
-        ensure_video_poster(img_abs, rel_under_data)
-        return
-
-    dst = thumb_path_for(rel_under_data)
-    if dst.exists():
-        return
-
-    # Only generate thumbs for common raster formats.
-    ext = img_abs.suffix.lower()
-    if ext not in {".jpg", ".jpeg", ".png", ".webp", ".heic"}:
-        return
-
-    dst.parent.mkdir(parents=True, exist_ok=True)
-
-    with Image.open(img_abs) as im:
-        im = ImageOps.exif_transpose(im)
-        if ext in {".jpg", ".jpeg", ".heic"}:
-            im = im.convert("RGB")
-        im.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
-
-        if ext in {".jpg", ".jpeg", ".heic"}:
-            im.save(dst, format="JPEG", quality=82, optimize=True, progressive=True)
-        elif ext == ".png":
-            im.save(dst, format="PNG", optimize=True)
-        else:  # .webp
-            im = im.convert("RGB")
-            im.save(dst, format="WEBP", quality=82, method=6)
 from .models import (
     FitnessLogRequest,
     FitnessLogResponse,
@@ -196,305 +93,13 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 MEDIA_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/files", StaticFiles(directory=str(DATA_DIR)), name="files")
 app.mount("/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
+app.include_router(backup_router)
+app.include_router(movies_router)
 
 
 @app.get("/api/health")
 def health():
     return {"ok": True, "time": datetime.now().astimezone().isoformat(timespec="seconds")}
-
-
-@app.get("/api/backup/status")
-def backup_status(request: Request):
-    _check_local_request(request)
-    return latest_valid_backup(MEDIA_DIR)
-
-
-def _run_backup_export(job_id: str) -> None:
-    def update_progress(files_done: int, total_files: int) -> None:
-        with BACKUP_EXPORTS_LOCK:
-            job = BACKUP_EXPORTS.get(job_id)
-            if job is not None:
-                job["filesDone"] = files_done
-                job["totalFiles"] = total_files
-
-    try:
-        archive = create_backup_archive(DATA_DIR, on_progress=update_progress)
-    except Exception as exc:
-        with BACKUP_EXPORTS_LOCK:
-            job = BACKUP_EXPORTS.get(job_id)
-            if job is not None:
-                job.update(status="error", error=str(exc))
-        return
-
-    with BACKUP_EXPORTS_LOCK:
-        job = BACKUP_EXPORTS.get(job_id)
-        if job is not None:
-            job.update(status="ready", archive=archive, filesDone=job["totalFiles"])
-        else:
-            archive.unlink(missing_ok=True)
-
-
-def _cleanup_backup_export(job_id: str, archive: Path) -> None:
-    archive.unlink(missing_ok=True)
-    with BACKUP_EXPORTS_LOCK:
-        BACKUP_EXPORTS.pop(job_id, None)
-
-
-@app.post("/api/backup/export")
-def start_data_backup(request: Request):
-    _check_local_request(request)
-    with BACKUP_EXPORTS_LOCK:
-        for job_id, job in list(BACKUP_EXPORTS.items()):
-            age = time.time() - job["createdAt"]
-            if job["status"] == "running":
-                raise HTTPException(status_code=409, detail="A backup export is already running or ready to download")
-            if job["status"] == "ready" and age <= 3600:
-                raise HTTPException(status_code=409, detail="A backup export is already running or ready to download")
-            if age > 3600:
-                archive = job.get("archive")
-                if isinstance(archive, Path):
-                    archive.unlink(missing_ok=True)
-                BACKUP_EXPORTS.pop(job_id, None)
-
-        job_id = uuid4().hex
-        BACKUP_EXPORTS[job_id] = {
-            "status": "running",
-            "filesDone": 0,
-            "totalFiles": 0,
-            "createdAt": time.time(),
-        }
-    threading.Thread(target=_run_backup_export, args=(job_id,), daemon=True).start()
-    return {"jobId": job_id, "status": "running"}
-
-
-@app.get("/api/backup/export/{job_id}")
-def get_data_backup_status(job_id: str, request: Request):
-    _check_local_request(request)
-    with BACKUP_EXPORTS_LOCK:
-        job = BACKUP_EXPORTS.get(job_id)
-        if job is None:
-            raise HTTPException(status_code=404, detail="Backup export not found")
-        return {
-            "jobId": job_id,
-            "status": job["status"],
-            "filesDone": job["filesDone"],
-            "totalFiles": job["totalFiles"],
-            "error": job.get("error"),
-        }
-
-
-@app.get("/api/backup/export/{job_id}/download")
-def download_data_backup(job_id: str, request: Request):
-    _check_local_request(request)
-    with BACKUP_EXPORTS_LOCK:
-        job = BACKUP_EXPORTS.get(job_id)
-        if job is None:
-            raise HTTPException(status_code=404, detail="Backup export not found")
-        if job["status"] != "ready":
-            raise HTTPException(status_code=409, detail="Backup export is not ready")
-        archive = job["archive"]
-    return FileResponse(
-        archive,
-        media_type="application/zip",
-        filename=f"diary-data-{datetime.now().strftime('%Y%m%d-%H%M%S')}.zip",
-        background=BackgroundTask(_cleanup_backup_export, job_id, archive),
-    )
-
-
-@app.post("/api/backup/export/{job_id}/save-to-media")
-def save_data_backup_to_media(job_id: str, request: Request):
-    _check_local_request(request)
-    with BACKUP_EXPORTS_LOCK:
-        job = BACKUP_EXPORTS.get(job_id)
-        if job is None:
-            raise HTTPException(status_code=404, detail="Backup export not found")
-        if job["status"] != "ready":
-            raise HTTPException(status_code=409, detail="Backup export is not ready")
-        job["status"] = "saving"
-        archive = job["archive"]
-
-    MEDIA_DIR.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    destination = MEDIA_DIR / f"diary-backup-{stamp}.zip"
-    suffix = 2
-    while destination.exists():
-        destination = MEDIA_DIR / f"diary-backup-{stamp}-{suffix}.zip"
-        suffix += 1
-    try:
-        shutil.move(str(archive), str(destination))
-    except OSError as exc:
-        with BACKUP_EXPORTS_LOCK:
-            job = BACKUP_EXPORTS.get(job_id)
-            if job is not None:
-                job["status"] = "ready"
-        raise HTTPException(status_code=500, detail=f"Could not save backup to media folder: {exc}") from exc
-
-    with BACKUP_EXPORTS_LOCK:
-        BACKUP_EXPORTS.pop(job_id, None)
-    return {"ok": True, "path": str(destination)}
-
-
-@app.post("/api/backup/import")
-def import_data_backup(
-    request: Request,
-    file: UploadFile = File(...),
-    confirm_replace: bool = Form(False),
-):
-    _check_local_request(request)
-    if not confirm_replace:
-        raise HTTPException(status_code=400, detail="Confirm replacing the current data directory")
-    try:
-        file.file.seek(0)
-        file_count, unpacked_bytes = restore_backup_archive(DATA_DIR, file.file)
-    except (OSError, RuntimeError, ValueError, zipfile.BadZipFile, zipfile.LargeZipFile) as exc:
-        raise HTTPException(status_code=400, detail=f"Could not restore backup: {exc}") from exc
-
-    photos_repo._gallery_disk_synced = False
-    photos_repo._ranked_rels = None
-    photos_repo._ranked_index = None
-    return {"ok": True, "files": file_count, "unpackedBytes": unpacked_bytes}
-
-
-def _movie_folder() -> Path | None:
-    try:
-        value = json.loads(MOVIES_CONFIG_PATH.read_text(encoding="utf-8")).get("folder")
-        folder = Path(value).expanduser().resolve() if isinstance(value, str) else None
-        return folder if folder is not None and folder.is_dir() else None
-    except (OSError, ValueError, TypeError, json.JSONDecodeError):
-        return None
-
-
-def _check_local_request(request: Request) -> None:
-    host = request.client.host if request.client else ""
-    try:
-        is_local = ipaddress.ip_address(host).is_loopback
-    except ValueError:
-        is_local = False
-    if not is_local:
-        raise HTTPException(status_code=403, detail="Movie library settings are local-only")
-
-
-def _save_movie_folder(folder: str) -> Path:
-    path = Path(folder).expanduser().resolve()
-    if not path.is_dir():
-        raise HTTPException(status_code=400, detail="Folder does not exist")
-    MOVIES_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    MOVIES_CONFIG_PATH.write_text(json.dumps({"folder": str(path)}, indent=2), encoding="utf-8")
-    return path
-
-
-def _resolve_movie(movie_path: str) -> tuple[Path, Path]:
-    root = _movie_folder()
-    if root is None:
-        raise HTTPException(status_code=404, detail="Choose a movie folder first")
-    candidate = (root / movie_path).resolve()
-    try:
-        candidate.relative_to(root)
-    except ValueError:
-        raise HTTPException(status_code=404, detail="Movie not found") from None
-    if not candidate.is_file() or candidate.suffix.lower() not in MOVIE_EXTS:
-        raise HTTPException(status_code=404, detail="Movie not found")
-    return root, candidate
-
-
-@app.get("/api/movies")
-def list_movies():
-    root = _movie_folder()
-    if root is None:
-        return {"folder": None, "count": 0, "items": []}
-
-    items = []
-    for movie in root.rglob("*"):
-        if not movie.is_file() or movie.suffix.lower() not in MOVIE_EXTS:
-            continue
-        try:
-            movie.resolve().relative_to(root)
-        except ValueError:
-            continue
-        rel = movie.relative_to(root).as_posix()
-        encoded = quote(rel, safe="/")
-        items.append({
-            "path": rel,
-            "title": movie.stem,
-            "url": f"/api/movies/stream/{encoded}",
-            "posterUrl": f"/api/movies/poster/{encoded}",
-        })
-    items.sort(key=lambda item: item["title"].casefold())
-    return {"folder": str(root), "count": len(items), "items": items}
-
-
-@app.post("/api/movies/folder")
-def set_movie_folder(payload: dict[str, str], request: Request):
-    _check_local_request(request)
-    folder = payload.get("path", "").strip()
-    if not folder:
-        raise HTTPException(status_code=400, detail="Folder path is required")
-    _save_movie_folder(folder)
-    return list_movies()
-
-
-@app.post("/api/movies/pick-folder")
-def pick_movie_folder(request: Request):
-    _check_local_request(request)
-    try:
-        import tkinter as tk
-        from tkinter import filedialog
-    except ImportError:
-        raise HTTPException(status_code=501, detail="Native folder selection is unavailable; enter a path instead") from None
-
-    root = tk.Tk()
-    root.withdraw()
-    root.attributes("-topmost", True)
-    try:
-        current = _movie_folder()
-        selected = filedialog.askdirectory(
-            title="Choose your movie folder",
-            initialdir=str(current) if current else None,
-        )
-    finally:
-        root.destroy()
-    if not selected:
-        return {"cancelled": True, **list_movies()}
-    _save_movie_folder(selected)
-    return list_movies()
-
-
-@app.get("/api/movies/poster/{movie_path:path}")
-def movie_poster(movie_path: str):
-    root, movie = _resolve_movie(movie_path)
-    rel = movie.relative_to(root)
-    poster = (MOVIE_THUMBS_DIR / f"{rel.as_posix()}.jpg").resolve()
-    try:
-        poster.relative_to(MOVIE_THUMBS_DIR.resolve())
-    except ValueError:
-        raise HTTPException(status_code=404, detail="Poster not found") from None
-    _generate_video_poster(movie, poster)
-    if not poster.is_file():
-        raise HTTPException(status_code=404, detail="Could not create movie poster; install ffmpeg")
-    return FileResponse(poster, media_type="image/jpeg")
-
-
-@app.get("/api/movies/stream/{movie_path:path}")
-def stream_movie(movie_path: str):
-    _, movie = _resolve_movie(movie_path)
-    media_type = mimetypes.guess_type(movie.name)[0] or "application/octet-stream"
-    return FileResponse(movie, media_type=media_type, filename=movie.name)
-
-
-@app.post("/api/movies/open")
-def open_movie(payload: dict[str, str], request: Request):
-    _check_local_request(request)
-    _, movie = _resolve_movie(payload.get("path", ""))
-    try:
-        if sys.platform == "win32":
-            os.startfile(str(movie))
-        elif sys.platform == "darwin":
-            subprocess.Popen(["open", str(movie)])
-        else:
-            subprocess.Popen(["xdg-open", str(movie)])
-    except OSError as exc:
-        raise HTTPException(status_code=500, detail=f"Could not open movie player: {exc}") from exc
-    return {"ok": True}
 
 
 def _gallery_item_for(img: Path) -> GalleryItem | None:

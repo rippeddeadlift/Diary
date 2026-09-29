@@ -42,7 +42,7 @@ class TestBackupEndpoints:
         media_dir = tmp_path / "external-media"
         media_dir.mkdir()
         (media_dir / "original.jpg").write_bytes(b"media stays outside the data backup")
-        monkeypatch.setattr("server.main.MEDIA_DIR", media_dir)
+        monkeypatch.setattr("server.backups.routes.MEDIA_DIR", media_dir)
 
         started = client.post("/api/backup/export")
         assert started.status_code == 200
@@ -194,7 +194,7 @@ class TestPhotosEndpoints:
         assert list((temp_data_dir / "photos" / "inbox").rglob("IMG_8834.mov")) == []
 
     def test_video_upload_is_listed_and_playable(self, client, temp_data_dir, monkeypatch):
-        monkeypatch.setattr("server.main.subprocess.run", lambda *a, **k: None)
+        monkeypatch.setattr("server.thumbnails.subprocess.run", lambda *a, **k: None)
         payload = b"\x00\x00\x00\x18ftypmp42"
         up = client.post(
             "/api/photos/upload",
@@ -228,7 +228,7 @@ class TestMoviesEndpoints:
             Image.new("RGB", (16, 16), color=color).save(args[-1], format="JPEG")
             return SimpleNamespace(returncode=0)
 
-        monkeypatch.setattr("server.main.subprocess.run", create_poster)
+        monkeypatch.setattr("server.thumbnails.subprocess.run", create_poster)
         selected = client.post("/api/movies/folder", json={"path": str(movie_root)})
         assert selected.status_code == 200, selected.text
         data = selected.json()
@@ -239,8 +239,8 @@ class TestMoviesEndpoints:
         assert item["path"] == "Sci-Fi/Arrival.mp4"
 
         opened_paths = []
-        monkeypatch.setattr("server.main.sys.platform", "win32")
-        monkeypatch.setattr("server.main.os.startfile", opened_paths.append, raising=False)
+        monkeypatch.setattr("server.movies.routes.sys.platform", "win32")
+        monkeypatch.setattr("server.movies.routes.os.startfile", opened_paths.append, raising=False)
         opened = client.post("/api/movies/open", json={"path": item["path"]})
         assert opened.status_code == 200, opened.text
         assert opened_paths == [str(nested / "Arrival.mp4")]

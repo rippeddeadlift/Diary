@@ -37,17 +37,20 @@ def temp_data_dir(monkeypatch) -> Generator[Path, None, None]:
         # Patch server.main module-level paths (computed at import time)
         monkeypatch.setattr("server.main.DATA_DIR", tmp_path)
         monkeypatch.setattr("server.main.MEDIA_DIR", tmp_path)
+        monkeypatch.setattr("server.backups.routes.DATA_DIR", tmp_path)
+        monkeypatch.setattr("server.backups.routes.MEDIA_DIR", tmp_path)
         monkeypatch.setattr("server.main.PHOTOS_INBOX_DIR", tmp_path / "photos" / "inbox")
         monkeypatch.setattr("server.main.TRASH_DIR", tmp_path / "photos" / "_trash")
         monkeypatch.setattr("server.main.THUMBS_DIR", tmp_path / "photos" / "_thumbs")
+        monkeypatch.setattr("server.thumbnails.THUMBS_DIR", tmp_path / "photos" / "_thumbs")
         monkeypatch.setattr("server.main.THUMBS_TRASH_DIR", tmp_path / "photos" / "_thumbs" / "_trash")
         monkeypatch.setattr("server.main.TRIPS_DIR", tmp_path / "trips")
         monkeypatch.setattr("server.main.TRIPS_MEDIA_DIR", tmp_path / "trips")
         monkeypatch.setattr("server.main.TRIPS_MEDIA_TRASH_DIR", tmp_path / "trips" / "_trash")
         monkeypatch.setattr("server.main.TRIPS_INDEX", tmp_path / "trips" / "index.json")
         monkeypatch.setattr("server.main.TRIPS_TRASH_DIR", tmp_path / "trips" / "_trash")
-        monkeypatch.setattr("server.main.MOVIES_CONFIG_PATH", tmp_path / "movies" / "library.json")
-        monkeypatch.setattr("server.main.MOVIE_THUMBS_DIR", tmp_path / "movies" / "_thumbs")
+        monkeypatch.setattr("server.movies.routes.MOVIES_CONFIG_PATH", tmp_path / "movies" / "library.json")
+        monkeypatch.setattr("server.movies.routes.MOVIE_THUMBS_DIR", tmp_path / "movies" / "_thumbs")
         
         yield tmp_path
 
