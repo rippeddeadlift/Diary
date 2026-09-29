@@ -13,7 +13,7 @@ from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.background import BackgroundTask
 
-from .. import photos_repo
+from ..photos import repository as photos_repo
 from ..config import DATA_DIR, MEDIA_DIR
 from ..local_requests import check_local_request
 from .archive import create_backup_archive, latest_valid_backup, restore_backup_archive

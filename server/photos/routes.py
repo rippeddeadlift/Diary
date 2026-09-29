@@ -7,7 +7,7 @@ from typing import Any
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from .. import photos_repo
+from . import repository as photos_repo
 from ..config import DATA_DIR, MEDIA_DIR, VIDEO_EXTS
 from ..models import GalleryItem, GalleryListResponse
 

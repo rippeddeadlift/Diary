@@ -1,4 +1,4 @@
-"""Tests for server.photos_repo module."""
+"""Tests for server.photos.repository module."""
 from __future__ import annotations
 
 import json
@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from server.photos_repo import (
+from server.photos.repository import (
     batch_folder_name,
     bulk_toggle_sidecar_fields,
     ensure_sidecar_fields,
@@ -101,7 +101,7 @@ class TestSidecarPath:
     def test_media_sidecar_stays_under_app_data(self, temp_data_dir, tmp_path, monkeypatch):
         media_dir = tmp_path / "archive"
         image = media_dir / "photos" / "inbox" / "photo.jpg"
-        monkeypatch.setattr("server.photos_repo.MEDIA_DIR", media_dir)
+        monkeypatch.setattr("server.photos.repository.MEDIA_DIR", media_dir)
 
         assert sidecar_path_for(image) == temp_data_dir / "photos" / "inbox" / "photo.jpg.json"
 

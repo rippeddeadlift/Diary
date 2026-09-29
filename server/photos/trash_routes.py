@@ -5,7 +5,7 @@ from datetime import datetime
 
 from fastapi import APIRouter
 
-from .. import photos_repo
+from . import repository as photos_repo
 from ..config import DATA_DIR, MEDIA_DIR, PHOTOS_INBOX_DIR
 from ..models import TrashPhotosRequest, TrashPhotosResponse
 from ..thumbnails import thumb_path_for

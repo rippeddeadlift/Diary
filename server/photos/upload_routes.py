@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 
 from ..config import DATA_DIR, MEDIA_DIR, MEDIA_EXTS, PHOTOS_INBOX_DIR
 from ..models import UploadResponse, UploadSavedItem
-from ..photos_repo import (
+from .repository import (
     batch_folder_name,
     build_sidecar_for_image,
     is_live_photo_video_file,

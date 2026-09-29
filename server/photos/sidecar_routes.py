@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from .. import photos_repo
+from . import repository as photos_repo
 from ..config import DATA_DIR, MEDIA_DIR
 from ..models import (
     SidecarBulkUpdateRequest,

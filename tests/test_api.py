@@ -266,8 +266,8 @@ class TestMoviesEndpoints:
         inbox_dir.mkdir(parents=True)
         monkeypatch.setattr("server.photos.upload_routes.MEDIA_DIR", media_dir)
         monkeypatch.setattr("server.photos.upload_routes.PHOTOS_INBOX_DIR", inbox_dir)
-        monkeypatch.setattr("server.photos_repo.MEDIA_DIR", media_dir)
-        monkeypatch.setattr("server.photos_repo.PHOTOS_INBOX_DIR", inbox_dir)
+        monkeypatch.setattr("server.photos.repository.MEDIA_DIR", media_dir)
+        monkeypatch.setattr("server.photos.repository.PHOTOS_INBOX_DIR", inbox_dir)
 
         response = client.post(
             "/api/photos/upload",
