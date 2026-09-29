@@ -22,7 +22,8 @@ from fastapi.staticfiles import StaticFiles
 from . import photos_repo
 from .backups.routes import router as backup_router
 from .movies.routes import router as movies_router
-from .config import DATA_DIR, MEDIA_DIR, MEDIA_EXTS, PHOTOS_INBOX_DIR, ROOT, VIDEO_EXTS
+from .photos.routes import router as photos_router
+from .config import DATA_DIR, MEDIA_DIR, MEDIA_EXTS, PHOTOS_INBOX_DIR, ROOT
 from .thumbnails import ensure_thumb, thumb_path_for
 
 TRASH_DIR = MEDIA_DIR / "photos" / "_trash"
@@ -37,8 +38,6 @@ TRIPS_MEDIA_TRASH_DIR = TRIPS_MEDIA_DIR / "_trash"
 from .models import (
     FitnessLogRequest,
     FitnessLogResponse,
-    GalleryItem,
-    GalleryListResponse,
     SidecarGetResponse,
     SidecarModel,
     SidecarUpdateRequest,
@@ -95,241 +94,12 @@ app.mount("/files", StaticFiles(directory=str(DATA_DIR)), name="files")
 app.mount("/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
 app.include_router(backup_router)
 app.include_router(movies_router)
+app.include_router(photos_router)
 
 
 @app.get("/api/health")
 def health():
     return {"ok": True, "time": datetime.now().astimezone().isoformat(timespec="seconds")}
-
-
-def _gallery_item_for(img: Path) -> GalleryItem | None:
-    rel = img.relative_to(MEDIA_DIR).as_posix()
-    kind = "video" if img.suffix.lower() in VIDEO_EXTS else "image"
-    thumb_rel = f"photos/_thumbs/{rel}"
-    if kind == "video":
-        thumb_rel = str(Path(thumb_rel).with_suffix(".jpg")).replace("\\", "/")
-    thumb_abs = (DATA_DIR / thumb_rel).resolve()
-    thumb_exists = thumb_abs.exists()
-    sc_path = sidecar_path_for(img)
-    sc = load_or_init_sidecar_for_image(img) if sc_path.exists() else {}
-
-    people = sc.get("people") or []
-    tags = sc.get("tags") or []
-    created_at = sc.get("createdAt")
-    created_src = sc.get("createdAtSource")
-    added_at = sc.get("addedAt")
-    location = sc.get("location")
-
-    if not isinstance(people, list):
-        people = []
-    if not isinstance(tags, list):
-        tags = []
-    people = [str(x) for x in people if x is not None and str(x).strip()]
-    tags = [str(x) for x in tags if x is not None and str(x).strip()]
-
-    if created_at is not None and not isinstance(created_at, str):
-        created_at = str(created_at)
-    if created_src is not None and not isinstance(created_src, str):
-        created_src = str(created_src)
-
-    loc_obj: Any = None
-    if isinstance(location, dict) and "lat" in location and "lon" in location:
-        try:
-            loc_obj = {
-                "lat": float(location["lat"]),
-                "lon": float(location["lon"]),
-                "source": str(location.get("source") or "exif_gps"),
-            }
-        except Exception:
-            loc_obj = None
-
-    missing = not bool(created_at)
-
-    try:
-        return GalleryItem(
-            path=rel,
-            url=f"/media/{rel}",
-            kind=kind,
-            hasSidecar=sc_path.exists(),
-            sidecarPath=sc_path.relative_to(DATA_DIR).as_posix() if sc_path.exists() else None,
-            thumbUrl=f"/files/{thumb_rel}" if thumb_exists else None,
-            thumbExists=thumb_exists,
-            people=people,
-            tags=tags,
-            createdAt=created_at,
-            createdAtSource=created_src,
-            addedAt=added_at,
-            location=loc_obj,
-            missing=missing,
-        )
-    except Exception:
-        return None
-
-
-@app.get("/api/photos/inbox/all", response_model=GalleryListResponse)
-def list_inbox_all(offset: int = 0, limit: int | None = None, before: str | None = None):
-    before_created_at = before
-    """List inbox photos.
-
-    Without limit, returns the full sorted list (existing callers).
-    With limit, returns one page so the UI can paint before the rest is read.
-    """
-    offset = max(0, offset)
-    order: dict[str, str | None] = {}
-    cached_rels = load_gallery_paths() if limit is not None else []
-    # Uploads update the cache themselves. Catch files dropped on disk only
-    # once per process — a full inbox walk on every page made the first 48 slow.
-    if limit is not None and (cached_rels or GALLERY_ORDER_PATH.exists()):
-        try:
-            added = sync_missing_gallery_items_once()
-        except Exception:
-            added = 0
-        if added:
-            cached_rels = load_gallery_paths()
-    # A sorted page needs a date for every path. Use it only when the last full
-    # pass already wrote one; otherwise scan newest folders only.
-    if limit is not None and cached_rels and GALLERY_ORDER_PATH.exists():
-        order = load_gallery_order()
-
-    partial = False
-    if limit is not None:
-        images, partial = newest_inbox_images(max(1, min(limit, 500)), before)
-        total = len(cached_rels) if cached_rels else None
-        offset = 0
-    else:
-        images = list_inbox_images()
-        total = len(images)
-        try:
-            save_gallery_paths([p.relative_to(MEDIA_DIR).as_posix() for p in images])
-        except Exception:
-            pass
-
-    if limit is None:
-        page = images
-        has_more = False
-    else:
-        limit = max(1, min(limit, 500))
-        page = images[:limit]
-        has_more = partial
-
-    items: list[GalleryItem] = []
-    for img in page:
-        item = _gallery_item_for(img)
-        if item is not None:
-            items.append(item)
-
-    if limit is None:
-        items_dicts = [it.model_dump() for it in items]
-        sort_gallery_items(items_dicts)
-        items = [GalleryItem(**d) for d in items_dicts]
-        try:
-            save_gallery_order({it.path: it.createdAt for it in items})
-        except Exception:
-            pass
-
-    return GalleryListResponse(
-        count=len(items),
-        total=total,
-        offset=offset,
-        limit=limit,
-        hasMore=has_more,
-        items=items,
-    )
-
-
-@app.get("/api/photos/suggest", response_model=GalleryListResponse)
-def suggest_photos(date: str, bbox: str | None = None, limit: int = 200):
-    """Suggest inbox photos for a given day (YYYY-MM-DD).
-
-    Optional bbox: "minLat,minLon,maxLat,maxLon" to further filter by GPS.
-    """
-
-    # Basic date validation
-    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date or ""):
-        return JSONResponse({"ok": False, "error": "Invalid date"}, status_code=400)
-
-    bbox_vals: tuple[float, float, float, float] | None = None
-    if bbox:
-        try:
-            parts = [float(x) for x in bbox.split(",")]
-            if len(parts) == 4:
-                minLat, minLon, maxLat, maxLon = parts
-                if minLat > maxLat:
-                    minLat, maxLat = maxLat, minLat
-                if minLon > maxLon:
-                    minLon, maxLon = maxLon, minLon
-                bbox_vals = (minLat, minLon, maxLat, maxLon)
-        except Exception:
-            bbox_vals = None
-
-    items: list[GalleryItem] = []
-
-    for img in list_inbox_images():
-        if len(items) >= max(1, min(int(limit), 1000)):
-            break
-
-        rel = img.relative_to(MEDIA_DIR).as_posix()
-        sc_path = sidecar_path_for(img)
-        sc = load_or_init_sidecar_for_image(img) if sc_path.exists() else {}
-
-        created_at = sc.get("createdAt")
-        if not (isinstance(created_at, str) and created_at.startswith(date)):
-            continue
-
-        # Optional bbox filter (requires gps)
-        if bbox_vals is not None:
-            loc = sc.get("location")
-            try:
-                if not (isinstance(loc, dict) and "lat" in loc and "lon" in loc):
-                    continue
-                lat = float(loc["lat"])
-                lon = float(loc["lon"])
-                minLat, minLon, maxLat, maxLon = bbox_vals
-                if not (minLat <= lat <= maxLat and minLon <= lon <= maxLon):
-                    continue
-            except Exception:
-                continue
-
-        thumb_rel = f"photos/_thumbs/{rel}"
-        thumb_abs = (DATA_DIR / thumb_rel).resolve()
-        thumb_exists = thumb_abs.exists()
-
-        people = sc.get("people") or []
-        tags = sc.get("tags") or []
-        if not isinstance(people, list):
-            people = []
-        if not isinstance(tags, list):
-            tags = []
-        people = [str(x) for x in people if x is not None and str(x).strip()]
-        tags = [str(x) for x in tags if x is not None and str(x).strip()]
-
-        # Location parsen, falls vorhanden und gültig
-        loc_data = sc.get("location")
-        location_val = None
-        if isinstance(loc_data, dict) and "lat" in loc_data and "lon" in loc_data:
-            try:
-                location_val = {"lat": float(loc_data["lat"]), "lon": float(loc_data["lon"])}
-            except (ValueError, TypeError):
-                pass
-
-        items.append(
-            GalleryItem(
-                path=rel,
-                url=f"/media/{rel}",
-                hasSidecar=sc_path.exists(),
-                sidecarPath=sc_path.relative_to(DATA_DIR).as_posix() if sc_path.exists() else None,
-                thumbUrl=f"/files/{thumb_rel}" if thumb_exists else None,
-                thumbExists=thumb_exists,
-                people=people,
-                tags=tags,
-                createdAt=str(created_at),
-                createdAtSource=str(sc.get("createdAtSource") or "exif"),
-                location=location_val, # <-- Hier den ermittelten Wert einsetzen
-                missing=False,
-            )
-        )
-
-    return GalleryListResponse(count=len(items), items=items)
 
 
 @app.get("/api/photos/sidecar", response_model=SidecarGetResponse)
