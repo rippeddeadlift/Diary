@@ -26,6 +26,7 @@ export function normalizeGalleryItem(raw: any): GalleryItem {
     people: normalizePeople(raw.people),
     tags: normalizeTags(raw.tags),
     createdAt: raw.createdAt ?? null,
+    addedAt: raw.addedAt ?? null,
     location: raw.location ?? null,
     missing: raw.missing ?? false
   }

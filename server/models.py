@@ -26,6 +26,7 @@ class GalleryItem(BaseModel):
 
     createdAt: Optional[str] = None
     createdAtSource: Optional[str] = None
+    addedAt: Optional[str] = None
 
     location: Optional[Location] = None
     missing: bool = False

@@ -14,6 +14,7 @@ export type GalleryItem = {
   people?: Person[]
   tags?: PhotoTag[]
   createdAt?: string | null
+  addedAt?: string | null
   location?: PhotoLocation
   missing?: boolean
 }
@@ -28,6 +29,7 @@ export type RawGalleryItem = {
   people?: string[]
   tags?: string[]
   createdAt?: string | null
+  addedAt?: string | null
   location?: PhotoLocation
   missing?: boolean
 }

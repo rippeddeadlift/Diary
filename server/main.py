@@ -512,6 +512,7 @@ def _gallery_item_for(img: Path) -> GalleryItem | None:
     tags = sc.get("tags") or []
     created_at = sc.get("createdAt")
     created_src = sc.get("createdAtSource")
+    added_at = sc.get("addedAt")
     location = sc.get("location")
 
     if not isinstance(people, list):
@@ -552,6 +553,7 @@ def _gallery_item_for(img: Path) -> GalleryItem | None:
             tags=tags,
             createdAt=created_at,
             createdAtSource=created_src,
+            addedAt=added_at,
             location=loc_obj,
             missing=missing,
         )

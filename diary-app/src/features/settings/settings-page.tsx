@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Archive, Check, HardDrive, LoaderCircle, Upload } from 'lucide-react'
+import { Archive, Check, FolderOpen, HardDrive, LoaderCircle, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   getBackupExportStatus,
@@ -139,24 +139,29 @@ export function SettingsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <label htmlFor="backup-file" className="text-sm font-medium">ZIP-Datei</label>
           <input
             ref={fileInputRef}
             id="backup-file"
             type="file"
             accept=".zip,application/zip"
             disabled={busy}
+            aria-label="ZIP-Datei auswählen"
             onChange={(event) => {
               setBackupFile(event.target.files?.[0] ?? null)
               setConfirmReplace(false)
               setError(null)
               setResult(null)
             }}
-            className="max-w-full text-sm file:mr-3 file:rounded-md file:border file:bg-background file:px-3 file:py-2 file:text-sm"
+            className="hidden"
           />
+          <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={busy}>
+            <FolderOpen className="mr-2 h-4 w-4" />
+            {backupFile ? 'ZIP-Datei ändern' : 'ZIP-Datei auswählen'}
+          </Button>
+          <span className="min-w-0 truncate text-sm text-muted-foreground" title={backupFile?.name}>
+            {backupFile ? `${backupFile.name} · ${formatBytes(backupFile.size)}` : 'Keine Datei ausgewählt'}
+          </span>
         </div>
-
-        {backupFile ? <p className="text-sm text-muted-foreground">{backupFile.name} · {formatBytes(backupFile.size)}</p> : null}
 
         <label className="flex max-w-2xl items-start gap-3 text-sm">
           <input

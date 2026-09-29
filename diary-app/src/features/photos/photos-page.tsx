@@ -6,7 +6,15 @@ import { GalleryGrid } from './components/GalleryGrid'
 import { PhotoViewerDialog } from './components/PhotoViewerDialog'
 import { PhotoUploadCard } from './components/PhotoUploadCard'
 import { Button } from '@/components/ui/button'
-import { Filter } from 'lucide-react'
+import { ArrowDownWideNarrow, Filter } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
 import { TagChips } from './components/TagChips'
 import { BulkTagDialog } from './components/BulkTagDialog'
 import { SelectionBar } from './components/SelectionBar'
@@ -39,9 +47,10 @@ export function PhotosPage() {
   const [peopleFilter, setPeopleFilter] = useState<Person[]>([])
   const [tagFilter, setTagFilter] = useState<PhotoTag[]>([])
   const [tagState, setTagState] = useState<'all' | 'untagged' | 'tagged'>('all')
+  const [sortMode, setSortMode] = useState<'date' | 'added'>('date')
 
   const filtered = useMemo(() => {
-    return gallery.filter((it) => {
+    const matching = gallery.filter((it) => {
       // 📍 NEU: Standort-Check (zuerst, da er am schnellsten filtert)
       if (showOnlyWithLocation && (!it.location?.lat || !it.location?.lon)) {
         return false
@@ -59,7 +68,18 @@ export function PhotosPage() {
 
       return true
     })
-  }, [gallery, peopleFilter, tagFilter, tagState, showOnlyWithLocation]) // Dependency hinzugefügt
+
+    if (sortMode === 'added') {
+      matching.sort((a, b) => {
+        const addedA = Date.parse(a.addedAt ?? '')
+        const addedB = Date.parse(b.addedAt ?? '')
+        if (Number.isNaN(addedA)) return Number.isNaN(addedB) ? 0 : 1
+        if (Number.isNaN(addedB)) return -1
+        return addedB - addedA
+      })
+    }
+    return matching
+  }, [gallery, peopleFilter, tagFilter, tagState, showOnlyWithLocation, sortMode])
 
   const selectedItems = useMemo(() => {
     const itemsByPath = new Map(filtered.map((it) => [it.path, it] as const))
@@ -81,6 +101,25 @@ export function PhotosPage() {
             </div>
 
             <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <ArrowDownWideNarrow className="mr-2 h-4 w-4" /> Sortieren
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Sortieren nach</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup
+                    value={sortMode}
+                    onValueChange={(value) => {
+                      if (value === 'date' || value === 'added') setSortMode(value)
+                    }}
+                  >
+                    <DropdownMenuRadioItem value="date">Aufnahmedatum</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="added">Zuletzt hinzugefügt</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button variant="outline" size="sm" onClick={() => setFiltersOpen((v) => !v)}>
                 <Filter className="mr-2 h-4 w-4" /> Filter
               </Button>
@@ -160,6 +199,7 @@ export function PhotosPage() {
               selectionMode={selectionMode}
               selected={selectedPaths}
               onToggleSelect={toggleSelected}
+              sortMode={sortMode}
             />
           )}
         </CardContent>

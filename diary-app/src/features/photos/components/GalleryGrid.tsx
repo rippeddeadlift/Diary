@@ -90,13 +90,15 @@ export function GalleryGrid({
   onSelect,
   selectionMode,
   selected,
-  onToggleSelect
+  onToggleSelect,
+  sortMode = 'date'
 }: {
   items: GalleryItem[]
   onSelect: (it: GalleryItem) => void
   selectionMode: boolean
   selected: Set<string>
   onToggleSelect: (it: GalleryItem) => void
+  sortMode?: 'date' | 'added'
 }) {
   const cols = useGalleryColumns()
   const gridRef = useRef<HTMLDivElement>(null)
@@ -106,6 +108,7 @@ export function GalleryGrid({
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
 
   const rowCount = Math.ceil(items.length / cols)
+  const timelineDateOf = (item: GalleryItem) => sortMode === 'added' ? item.addedAt : item.createdAt
 
   const rowVirtualizer = useWindowVirtualizer({
     count: rowCount,
@@ -121,7 +124,8 @@ export function GalleryGrid({
     let hasUndated = false
 
     items.forEach((it, index) => {
-      if (!it.createdAt) {
+      const timelineDate = timelineDateOf(it)
+      if (!timelineDate) {
         if (!hasUndated) {
           marks.push({ index, key: 'undated', label: 'Ohne Datum', year: '' })
           hasUndated = true
@@ -129,7 +133,7 @@ export function GalleryGrid({
         return
       }
 
-      const date = new Date(it.createdAt)
+      const date = new Date(timelineDate)
       if (Number.isNaN(date.getTime())) return
 
       const key = `${date.getFullYear()}-${date.getMonth()}`
@@ -145,16 +149,18 @@ export function GalleryGrid({
     })
 
     return marks
-  }, [items])
+  }, [items, sortMode])
 
   const currentItem = items[Math.min(activeIndex, Math.max(items.length - 1, 0))]
-  const currentDate = currentItem?.createdAt ? new Date(currentItem.createdAt) : null
+  const currentTimelineDate = currentItem ? timelineDateOf(currentItem) : null
+  const currentDate = currentTimelineDate ? new Date(currentTimelineDate) : null
   const currentLabel = currentDate && !Number.isNaN(currentDate.getTime())
     ? currentDate.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })
     : 'Ohne Datum'
   const previewIndex = hoveredIndex ?? Math.min(activeIndex, Math.max(items.length - 1, 0))
   const previewPercentage = items.length > 1 ? (previewIndex / (items.length - 1)) * 100 : 0
-  const previewDate = items[previewIndex]?.createdAt ? new Date(items[previewIndex].createdAt) : null
+  const previewTimelineDate = items[previewIndex] ? timelineDateOf(items[previewIndex]) : null
+  const previewDate = previewTimelineDate ? new Date(previewTimelineDate) : null
   const previewLabel = previewDate && !Number.isNaN(previewDate.getTime())
     ? previewDate.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })
     : 'Ohne Datum'
@@ -260,7 +266,7 @@ export function GalleryGrid({
             ref={timelineRef}
             role="slider"
             tabIndex={0}
-            aria-label="In der Fotogalerie nach Datum navigieren"
+            aria-label={sortMode === 'added' ? 'In der Fotogalerie nach Hinzufügedatum navigieren' : 'In der Fotogalerie nach Aufnahmedatum navigieren'}
             aria-valuemin={0}
             aria-valuemax={items.length - 1}
             aria-valuenow={Math.min(activeIndex, items.length - 1)}

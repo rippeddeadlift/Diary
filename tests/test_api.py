@@ -140,6 +140,7 @@ class TestPhotosEndpoints:
         assert data["hasMore"] is True
         assert data["total"] in (None, 3)
         assert [it["path"].rsplit("/", 1)[-1] for it in data["items"]] == ["b.jpg", "c.jpg"]
+        assert all(it["addedAt"] for it in data["items"])
 
     def test_list_inbox_page_appends_undated_after_dated(self, client, temp_data_dir):
         """Photos with no date still load, after every dated photo."""
