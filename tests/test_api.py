@@ -383,3 +383,16 @@ class TestTripsEndpoints:
         assert response.status_code == 200
         data = response.json()
         assert data["trashed"] == 0
+
+
+class TestFitnessEndpoints:
+    def test_log_appends_sets_to_same_day(self, client, temp_data_dir):
+        first = client.post("/api/fitness/log", json={"exercise": "dips", "sets": "10,8"})
+        second = client.post("/api/fitness/log", json={"exercise": "dips", "sets": "9,7"})
+
+        assert first.status_code == 200
+        assert second.status_code == 200
+        assert first.json()["ok"] is True
+        lines = (temp_data_dir / "fitness" / "dips.csv").read_text(encoding="utf-8").splitlines()
+        assert lines[0] == "date,sets"
+        assert lines[1].endswith(',"10,8,9,7"')

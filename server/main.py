@@ -3,9 +3,6 @@ from __future__ import annotations
 import json
 import os
 from datetime import datetime
-import re
-import subprocess
-import sys
 from pathlib import Path
 from typing import Any, List
 import zipfile
@@ -23,21 +20,16 @@ from . import photos_repo
 from .backups.routes import router as backup_router
 from .movies.routes import router as movies_router
 from .photos.routes import router as photos_router
-from .config import DATA_DIR, MEDIA_DIR, MEDIA_EXTS, PHOTOS_INBOX_DIR, ROOT
+from .trips.routes import router as trips_router
+from .fitness.routes import router as fitness_router
+from .config import DATA_DIR, MEDIA_DIR, MEDIA_EXTS, PHOTOS_INBOX_DIR
 from .thumbnails import ensure_thumb, thumb_path_for
 
 TRASH_DIR = MEDIA_DIR / "photos" / "_trash"
 THUMBS_DIR = DATA_DIR / "photos" / "_thumbs"
 THUMBS_TRASH_DIR = THUMBS_DIR / "_trash"
 
-TRIPS_DIR = DATA_DIR / "trips"
-TRIPS_INDEX = TRIPS_DIR / "index.json"
-TRIPS_TRASH_DIR = TRIPS_DIR / "_trash"
-TRIPS_MEDIA_DIR = MEDIA_DIR / "trips"
-TRIPS_MEDIA_TRASH_DIR = TRIPS_MEDIA_DIR / "_trash"
 from .models import (
-    FitnessLogRequest,
-    FitnessLogResponse,
     SidecarGetResponse,
     SidecarModel,
     SidecarUpdateRequest,
@@ -46,10 +38,6 @@ from .models import (
     SidecarBulkUpdateResponse,
     TrashPhotosRequest,
     TrashPhotosResponse,
-    TrashTripsRequest,
-    TrashTripsResponse,
-    TripMetaUpdateRequest,
-    TripMetaUpdateResponse,
     UploadResponse,
     UploadSavedItem,
 )
@@ -95,6 +83,8 @@ app.mount("/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
 app.include_router(backup_router)
 app.include_router(movies_router)
 app.include_router(photos_router)
+app.include_router(trips_router)
+app.include_router(fitness_router)
 
 
 @app.get("/api/health")
@@ -261,202 +251,6 @@ def trash_photos(req: TrashPhotosRequest):
         pass
 
     return TrashPhotosResponse(trashed=trashed, batch=str(trash_batch_dir.relative_to(MEDIA_DIR)).replace("\\", "/"))
-
-
-@app.post("/api/trips/import-gpx")
-def import_gpx():
-    """Run GPX import (downloads -> data/trips) and archive originals to data/import/gpx/_done."""
-    try:
-        proc = subprocess.run(
-            [sys.executable, "-m", "tools.import_gpx_inbox"],
-            cwd=str(ROOT),
-            capture_output=True,
-            text=True,
-            timeout=120,
-        )
-    except Exception as e:
-        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
-
-    out = (proc.stdout or "") + ("\n" + proc.stderr if proc.stderr else "")
-    m = re.search(r"Imported:\s*(\d+)\s*GPX", proc.stdout or "")
-    imported = int(m.group(1)) if m else None
-
-    if proc.returncode != 0:
-        return JSONResponse(
-            {"ok": False, "returncode": proc.returncode, "output": out, "imported": imported},
-            status_code=500,
-        )
-
-    return {"ok": True, "imported": imported, "output": out}
-
-
-@app.post("/api/trips/trash", response_model=TrashTripsResponse)
-def trash_trips(req: TrashTripsRequest):
-    dt = datetime.now().astimezone()
-    batch = dt.strftime("%Y-%m-%d_%H%M%S")
-    trash_batch_dir = TRIPS_TRASH_DIR / batch
-    trash_batch_dir.mkdir(parents=True, exist_ok=True)
-
-    if not TRIPS_INDEX.exists():
-        return TrashTripsResponse(trashed=0, batch=str(trash_batch_dir.relative_to(DATA_DIR)).replace("\\", "/"))
-
-    idx = json.loads(TRIPS_INDEX.read_text(encoding="utf-8"))
-    trips = list(idx.get("trips") or [])
-
-    by_id: dict[str, dict[str, Any]] = {}
-    for t in trips:
-        if isinstance(t, dict) and isinstance(t.get("id"), str):
-            by_id[t["id"]] = t
-
-    trashed = 0
-    to_remove: set[str] = set()
-
-    for trip_id in req.ids:
-        t = by_id.get(trip_id)
-        if not t:
-            continue
-        rel = t.get("path")
-        if not isinstance(rel, str) or not rel.strip():
-            continue
-
-        src = (TRIPS_DIR / rel).resolve()
-        src_media = (TRIPS_MEDIA_DIR / rel).resolve()
-        try:
-            src.relative_to(TRIPS_DIR)
-            src_media.relative_to(TRIPS_MEDIA_DIR)
-        except Exception:
-            continue
-
-        if not src.is_dir() or not src_media.is_dir():
-            continue
-
-        dst = (trash_batch_dir / rel).resolve()
-        dst_media = (TRIPS_MEDIA_TRASH_DIR / batch / rel).resolve()
-        try:
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            src.rename(dst)
-        except Exception:
-            try:
-                import shutil
-
-                shutil.move(str(src), str(dst))
-            except Exception:
-                continue
-
-        try:
-            dst_media.parent.mkdir(parents=True, exist_ok=True)
-            src_media.rename(dst_media)
-        except Exception:
-            try:
-                import shutil
-
-                shutil.move(str(src_media), str(dst_media))
-            except Exception:
-                try:
-                    dst.rename(src)
-                except Exception:
-                    pass
-                continue
-
-        to_remove.add(trip_id)
-        trashed += 1
-
-    if to_remove:
-        idx["trips"] = [t for t in trips if not (isinstance(t, dict) and t.get("id") in to_remove)]
-        TRIPS_INDEX.write_text(json.dumps(idx, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-
-    return TrashTripsResponse(trashed=trashed, batch=str(trash_batch_dir.relative_to(DATA_DIR)).replace("\\", "/"))
-
-
-@app.post("/api/trips/meta", response_model=TripMetaUpdateResponse)
-def update_trip_meta(req: TripMetaUpdateRequest):
-    if not TRIPS_INDEX.exists():
-        return JSONResponse({"ok": False, "error": "Trips index not found"}, status_code=404)
-
-    idx = json.loads(TRIPS_INDEX.read_text(encoding="utf-8"))
-    trips = idx.get("trips", [])
-
-    trip_entry = None
-    for t in trips:
-        if t.get("id") == req.id:
-            trip_entry = t
-            break
-
-    if not trip_entry:
-        return JSONResponse({"ok": False, "error": f"Trip {req.id} not found"}, status_code=404)
-
-    trip_dir = TRIPS_DIR / trip_entry["path"]
-    meta_path = trip_dir / "meta.json"
-
-    if not meta_path.exists():
-        return JSONResponse({"ok": False, "error": f"Meta file not found for trip {req.id}"}, status_code=404)
-
-    meta = json.loads(meta_path.read_text(encoding="utf-8"))
-    meta["title"] = req.title
-    meta["tags"] = req.tags
-
-    meta_path.write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
-
-    return TripMetaUpdateResponse(ok=True)
-
-@app.get("/api/trips/meta")
-def get_all_trips_meta():
-    if not TRIPS_INDEX.exists():
-        return []
-
-    # 1. Die Haupt-Index Datei lesen
-    idx = json.loads(TRIPS_INDEX.read_text(encoding="utf-8"))
-    trips_list = idx.get("trips", [])
-
-    full_data = []
-    
-    # 2. Für jede Tour die zugehörige meta.json laden
-    for t in trips_list:
-        trip_id = t.get("id")
-        trip_path = t.get("path")
-        
-        meta_file = TRIPS_DIR / trip_path / "meta.json"
-        if meta_file.exists():
-            meta_content = json.loads(meta_file.read_text(encoding="utf-8"))
-            full_data.append({
-                "id": trip_id,
-                "path": trip_path,
-                "meta": meta_content
-            })
-    
-    return full_data
-
-@app.post("/api/fitness/log", response_model=FitnessLogResponse)
-def fitness_log(req: FitnessLogRequest):
-    csv_dir = DATA_DIR / "fitness"
-    csv_dir.mkdir(exist_ok=True)
-    csv_path = csv_dir / f"{req.exercise}.csv"
-    
-    today = datetime.now().date().isoformat()
-    
-    lines = []
-    if csv_path.exists():
-        with csv_path.open("r", encoding="utf-8") as f:
-            lines = f.readlines()
-
-    # Prüfen, ob der letzte Eintrag von heute ist
-    if lines and lines[-1].startswith(today):
-        # Bestehende Sets extrahieren und neue anhängen
-        existing_sets = lines[-1].strip().split(',', 1)[1].strip('"')
-        lines[-1] = f'{today},"{existing_sets},{req.sets}"\n'
-        
-        # Komplette Datei mit aktualisierter letzter Zeile überschreiben
-        with csv_path.open("w", encoding="utf-8") as f:
-            f.writelines(lines)
-    else:
-        # Neue Datei anlegen oder neue Zeile anhängen
-        if not csv_path.exists():
-            csv_path.write_text('date,sets\n', encoding="utf-8")
-            
-        with csv_path.open("a", encoding="utf-8") as f:
-            f.write(f'{today},"{req.sets}"\n')
-
-    return FitnessLogResponse()
 
 
 @app.post("/api/photos/upload", response_model=UploadResponse)
