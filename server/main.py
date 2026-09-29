@@ -21,18 +21,13 @@ from .backups.routes import router as backup_router
 from .movies.routes import router as movies_router
 from .photos.routes import router as photos_router
 from .photos.sidecar_routes import router as sidecar_router
+from .photos.trash_routes import router as trash_photos_router
 from .trips.routes import router as trips_router
 from .fitness.routes import router as fitness_router
 from .config import DATA_DIR, MEDIA_DIR, MEDIA_EXTS, PHOTOS_INBOX_DIR
-from .thumbnails import ensure_thumb, thumb_path_for
-
-TRASH_DIR = MEDIA_DIR / "photos" / "_trash"
-THUMBS_DIR = DATA_DIR / "photos" / "_thumbs"
-THUMBS_TRASH_DIR = THUMBS_DIR / "_trash"
+from .thumbnails import ensure_thumb
 
 from .models import (
-    TrashPhotosRequest,
-    TrashPhotosResponse,
     UploadResponse,
     UploadSavedItem,
 )
@@ -43,8 +38,6 @@ from .photos_repo import (
     is_live_photo_video_file,
     list_inbox_images,
     newest_inbox_images,
-    load_or_init_sidecar_for_image,
-    resolve_media_path,
     save_sidecar,
     sidecar_path_for,
     unique_filename,
@@ -60,7 +53,6 @@ from .photos_repo import (
     load_gallery_paths,
     save_gallery_paths,
     remember_gallery_items,
-    forget_gallery_items,
     sync_missing_gallery_items_once,
     order_sort_key,
 )
@@ -79,6 +71,7 @@ app.include_router(backup_router)
 app.include_router(movies_router)
 app.include_router(photos_router)
 app.include_router(sidecar_router)
+app.include_router(trash_photos_router)
 app.include_router(trips_router)
 app.include_router(fitness_router)
 
@@ -86,105 +79,6 @@ app.include_router(fitness_router)
 @app.get("/api/health")
 def health():
     return {"ok": True, "time": datetime.now().astimezone().isoformat(timespec="seconds")}
-
-
-@app.post("/api/photos/trash", response_model=TrashPhotosResponse)
-def trash_photos(req: TrashPhotosRequest):
-    dt = datetime.now().astimezone()
-    batch = dt.strftime("%Y-%m-%d_%H%M%S")
-    trash_batch_dir = TRASH_DIR / batch
-    trash_batch_dir.mkdir(parents=True, exist_ok=True)
-
-    sha_idx = load_sha256_index()
-
-    trashed = 0
-    trashed_rels: list[str] = []
-    for rel in req.paths:
-        try:
-            img = resolve_media_path(rel)
-        except Exception:
-            continue
-        if not img.exists():
-            continue
-
-        # Only allow trashing from inbox
-        try:
-            img.relative_to(PHOTOS_INBOX_DIR)
-        except Exception:
-            continue
-
-        sc_path = sidecar_path_for(img)
-        sc = load_or_init_sidecar_for_image(img) if sc_path.exists() else {}
-
-        h = None
-        try:
-            h = sc.get("sha256") or sha256_file(img)
-        except Exception:
-            h = None
-
-        # Move image
-        dst_img = trash_batch_dir / img.name
-        if dst_img.exists():
-            dst_img = trash_batch_dir / f"{img.stem}_{int(img.stat().st_mtime)}{img.suffix}"
-        try:
-            dst_img.parent.mkdir(parents=True, exist_ok=True)
-            img.rename(dst_img)
-        except Exception:
-            # fallback to shutil
-            try:
-                import shutil
-
-                shutil.move(str(img), str(dst_img))
-            except Exception:
-                continue
-
-        # Move sidecar if present
-        if sc_path.exists():
-            dst_rel = dst_img.relative_to(MEDIA_DIR).as_posix()
-            dst_sc = DATA_DIR / f"{dst_rel}.json"
-            dst_sc.parent.mkdir(parents=True, exist_ok=True)
-            try:
-                sc_path.rename(dst_sc)
-            except Exception:
-                try:
-                    import shutil
-
-                    shutil.move(str(sc_path), str(dst_sc))
-                except Exception:
-                    pass
-
-        # Move thumbnail if present (keep restore possible)
-        try:
-            rel_under_data = img.relative_to(MEDIA_DIR).as_posix()
-            thumb_abs = thumb_path_for(rel_under_data)
-            if thumb_abs.exists():
-                thumb_dst = (THUMBS_TRASH_DIR / batch / rel_under_data).resolve()
-                thumb_dst.parent.mkdir(parents=True, exist_ok=True)
-                try:
-                    thumb_abs.rename(thumb_dst)
-                except Exception:
-                    import shutil
-
-                    shutil.move(str(thumb_abs), str(thumb_dst))
-        except Exception:
-            pass
-
-        if h and h in sha_idx:
-            sha_idx.pop(h, None)
-
-        trashed += 1
-        trashed_rels.append(rel)
-
-    try:
-        save_sha256_index(sha_idx)
-    except Exception:
-        pass
-    try:
-        forget_gallery_items(trashed_rels)
-    except Exception:
-        pass
-
-    return TrashPhotosResponse(trashed=trashed, batch=str(trash_batch_dir.relative_to(MEDIA_DIR)).replace("\\", "/"))
 
 
 @app.post("/api/photos/upload", response_model=UploadResponse)

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import zipfile
 from io import BytesIO
 from pathlib import Path
@@ -334,6 +335,45 @@ class TestSidecarEndpoints:
         retrieved = client.get("/api/photos/sidecar", params={"path": path})
         assert retrieved.status_code == 200
         assert retrieved.json()["sidecar"]["tags"] == ["hiking", "summer"]
+
+
+class TestPhotoTrashEndpoints:
+    def test_trash_moves_photo_sidecar_thumbnail_and_indexes(self, client, temp_data_dir):
+        rel = "photos/inbox/trash-test.jpg"
+        image = temp_data_dir / rel
+        image.write_bytes(b"trash me")
+        file_hash = hashlib.sha256(b"trash me").hexdigest()
+
+        sidecar = temp_data_dir / f"{rel}.json"
+        sidecar.write_text(json.dumps({"sha256": file_hash}), encoding="utf-8")
+        thumbnail = temp_data_dir / "photos" / "_thumbs" / rel
+        thumbnail.parent.mkdir(parents=True, exist_ok=True)
+        thumbnail.write_bytes(b"thumbnail")
+
+        (temp_data_dir / "photos" / "_sha256_index.json").write_text(
+            json.dumps({file_hash: rel}), encoding="utf-8"
+        )
+        (temp_data_dir / "photos" / "_gallery_paths.json").write_text(
+            json.dumps([rel]), encoding="utf-8"
+        )
+        (temp_data_dir / "photos" / "_gallery_order.json").write_text(
+            json.dumps({rel: "2024-01-01T00:00:00"}), encoding="utf-8"
+        )
+
+        response = client.post("/api/photos/trash", json={"paths": [rel]})
+        assert response.status_code == 200, response.text
+        data = response.json()
+        batch = data["batch"].split("/")[-1]
+        assert data["trashed"] == 1
+
+        trashed_rel = f"photos/_trash/{batch}/trash-test.jpg"
+        assert (temp_data_dir / trashed_rel).is_file()
+        assert not image.exists()
+        assert (temp_data_dir / f"{trashed_rel}.json").is_file()
+        assert (temp_data_dir / "photos" / "_thumbs" / "_trash" / batch / rel).is_file()
+        assert json.loads((temp_data_dir / "photos" / "_sha256_index.json").read_text()) == {}
+        assert json.loads((temp_data_dir / "photos" / "_gallery_paths.json").read_text()) == []
+        assert json.loads((temp_data_dir / "photos" / "_gallery_order.json").read_text()) == {}
 
 
 class TestTripsEndpoints:
