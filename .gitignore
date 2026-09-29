@@ -15,6 +15,7 @@ data/photos/
 data/trips/
 # Thumbnails cache (generated)
 data/photos/_thumbs/
+data/fitness/
 data/movies/library.json
 data/movies/_thumbs/
 
