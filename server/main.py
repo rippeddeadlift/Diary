@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .backups.routes import router as backup_router
 from .movies.routes import router as movies_router
-from .photos.routes import router as photos_router
+from .photos.gallery_routes import router as photos_router
 from .photos.sidecar_routes import router as sidecar_router
 from .photos.trash_routes import router as trash_photos_router
 from .photos.upload_routes import router as upload_photos_router

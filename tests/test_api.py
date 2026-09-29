@@ -264,8 +264,8 @@ class TestMoviesEndpoints:
         media_dir = tmp_path / "archive"
         inbox_dir = media_dir / "photos" / "inbox"
         inbox_dir.mkdir(parents=True)
-        monkeypatch.setattr("server.photos.upload_routes.MEDIA_DIR", media_dir)
-        monkeypatch.setattr("server.photos.upload_routes.PHOTOS_INBOX_DIR", inbox_dir)
+        monkeypatch.setattr("server.photos.upload_service.MEDIA_DIR", media_dir)
+        monkeypatch.setattr("server.photos.upload_service.PHOTOS_INBOX_DIR", inbox_dir)
         monkeypatch.setattr("server.photos.repository.MEDIA_DIR", media_dir)
         monkeypatch.setattr("server.photos.repository.PHOTOS_INBOX_DIR", inbox_dir)
 
@@ -394,6 +394,15 @@ class TestPhotoZipUploadEndpoints:
         assert saved["originalName"] == "zip-photo.jpg"
         assert (temp_data_dir / saved["file"]).is_file()
         assert (temp_data_dir / saved["sidecar"]).is_file()
+
+    def test_zip_upload_rejects_invalid_archive(self, client):
+        response = client.post(
+            "/api/photos/upload-zip",
+            files={"file": ("photos.zip", b"not a zip", "application/zip")},
+        )
+
+        assert response.status_code == 400
+        assert response.json()["error"] == "Invalid ZIP"
 
 
 class TestTripsEndpoints:
