@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Archive, Check, FolderOpen, HardDrive, LoaderCircle, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { getMediaDirectory, pickMediaDirectory, type MediaDirectorySetting } from '@/api/settings'
 import {
   getBackupExportStatus,
   getLatestBackup,
@@ -20,6 +21,9 @@ export function SettingsPage() {
   const [exportResult, setExportResult] = useState<string | null>(null)
   const [latestBackup, setLatestBackup] = useState<LatestBackup | null>(null)
   const [backupStatusError, setBackupStatusError] = useState<string | null>(null)
+  const [mediaDirectory, setMediaDirectory] = useState<MediaDirectorySetting | null>(null)
+  const [mediaDirectoryError, setMediaDirectoryError] = useState<string | null>(null)
+  const [selectingMediaDirectory, setSelectingMediaDirectory] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<string | null>(null)
@@ -34,8 +38,34 @@ export function SettingsPage() {
     }
   }
 
+  async function refreshMediaDirectory() {
+    try {
+      setMediaDirectory(await getMediaDirectory())
+      setMediaDirectoryError(null)
+    } catch (reason) {
+      setMediaDirectoryError(reason instanceof Error ? reason.message : 'Der Medienordner konnte nicht geladen werden.')
+    }
+  }
+
+  async function chooseMediaDirectory() {
+    setSelectingMediaDirectory(true)
+    setMediaDirectoryError(null)
+    try {
+      const selected = await pickMediaDirectory()
+      if (!selected.cancelled) setMediaDirectory(selected)
+    } catch (reason) {
+      setMediaDirectoryError(reason instanceof Error ? reason.message : 'Der Medienordner konnte nicht geändert werden.')
+    } finally {
+      setSelectingMediaDirectory(false)
+    }
+  }
+
   useEffect(() => {
     void refreshLatestBackup()
+  }, [])
+
+  useEffect(() => {
+    void refreshMediaDirectory()
   }, [])
 
   async function createBackup() {
@@ -85,6 +115,36 @@ export function SettingsPage() {
       <header className="border-b pb-5">
         <h1 className="text-2xl font-semibold">Einstellungen</h1>
       </header>
+
+      <section className="space-y-4 border-b pb-8" aria-labelledby="media-directory-heading">
+        <div className="flex items-start gap-3">
+          <HardDrive className="mt-1 h-5 w-5 shrink-0 text-muted-foreground" />
+          <div>
+            <h2 id="media-directory-heading" className="text-lg font-medium">Medienordner</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Uploads landen hier unter <code>photos/inbox</code>. Diary verschiebt vorhandene Dateien beim Wechsel nicht.
+            </p>
+          </div>
+        </div>
+
+        {mediaDirectory ? (
+          <div className="space-y-1 text-sm" role="status">
+            <p className="font-medium">
+              {mediaDirectory.restartRequired ? 'Nach einem Neustart aktiv:' : 'Aktiver Medienordner:'}
+            </p>
+            <code className="block break-all text-muted-foreground">{mediaDirectory.path}</code>
+            {mediaDirectory.restartRequired ? (
+              <p className="text-muted-foreground">Bis zum Neustart wird noch dieser Ordner verwendet: {mediaDirectory.activePath}</p>
+            ) : null}
+          </div>
+        ) : null}
+
+        <Button type="button" variant="outline" onClick={() => void chooseMediaDirectory()} disabled={selectingMediaDirectory}>
+          {selectingMediaDirectory ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <FolderOpen className="mr-2 h-4 w-4" />}
+          {selectingMediaDirectory ? 'Ordnerauswahl geöffnet…' : 'Medienordner wählen'}
+        </Button>
+        {mediaDirectoryError ? <p role="alert" className="text-sm text-destructive">{mediaDirectoryError}</p> : null}
+      </section>
 
       <section className="space-y-5 border-b pb-8" aria-labelledby="backup-heading">
         <div className="flex items-start gap-3">

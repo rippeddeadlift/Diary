@@ -22,6 +22,7 @@ def temp_data_dir(monkeypatch) -> Generator[Path, None, None]:
         
         # Patch config to use temp directory
         monkeypatch.setattr("server.config.DATA_DIR", tmp_path)
+        monkeypatch.setattr("server.config.MEDIA_DIR_SETTINGS_PATH", tmp_path / "settings.json")
         monkeypatch.setattr("server.config.MEDIA_DIR", tmp_path)
         monkeypatch.setattr("server.config.PHOTOS_INBOX_DIR", tmp_path / "photos" / "inbox")
         monkeypatch.setattr("server.photos.repository.DATA_DIR", tmp_path)

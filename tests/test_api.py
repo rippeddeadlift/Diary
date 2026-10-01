@@ -13,6 +13,7 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image, ImageStat
 
+import run_backend
 from server.main import app
 
 
@@ -31,6 +32,53 @@ class TestHealthEndpoint:
         data = response.json()
         assert data["ok"] is True
         assert "time" in data
+
+
+class TestMediaDirectorySettings:
+    def test_get_media_directory(self, client, temp_data_dir):
+        response = client.get("/api/settings/media-directory")
+        assert response.status_code == 200
+        assert response.json() == {
+            "path": str(temp_data_dir.resolve()),
+            "activePath": str(temp_data_dir.resolve()),
+            "restartRequired": False,
+        }
+
+    def test_pick_media_directory_persists_and_requires_restart(self, client, temp_data_dir, tmp_path, monkeypatch):
+        selected = tmp_path / "selected-media"
+        selected.mkdir()
+        monkeypatch.setattr("server.settings_routes.pick_directory", lambda *args: selected)
+
+        response = client.post("/api/settings/media-directory/pick")
+
+        assert response.status_code == 200, response.text
+        assert response.json() == {
+            "cancelled": False,
+            "path": str(selected.resolve()),
+            "activePath": str(temp_data_dir.resolve()),
+            "restartRequired": True,
+        }
+        assert json.loads((temp_data_dir / "settings.json").read_text(encoding="utf-8")) == {
+            "media_dir": str(selected.resolve())
+        }
+
+    def test_packaged_first_run_applies_selected_directory(self, temp_data_dir, tmp_path, monkeypatch):
+        selected = tmp_path / "first-run-media"
+        selected.mkdir()
+        monkeypatch.setattr(run_backend.sys, "frozen", True, raising=False)
+        monkeypatch.setattr("run_backend.config.load_media_dir_setting", lambda: None)
+        monkeypatch.setattr("server.folder_picker.pick_directory", lambda *args: selected)
+        monkeypatch.setenv("DIARY_MEDIA_DIR", "")
+
+        assert run_backend.configure_packaged_media_directory() is True
+
+        from server import config
+
+        assert config.MEDIA_DIR == selected
+        assert config.PHOTOS_INBOX_DIR == selected / "photos" / "inbox"
+        assert json.loads((temp_data_dir / "settings.json").read_text(encoding="utf-8")) == {
+            "media_dir": str(selected.resolve())
+        }
 
 
 class TestBackupEndpoints:
